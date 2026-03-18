@@ -9,7 +9,7 @@ celery_app = Celery(
     backend=REDIS_URL,
     include=[
         "services.ocr_worker.tasks",
-    ]
+    ],
 )
 
 celery_app.conf.update(

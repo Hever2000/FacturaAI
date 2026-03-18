@@ -6,8 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("zenith_ocr")
 
@@ -19,44 +18,37 @@ if not GROQ_API_KEY:
 def process_ocr(file_path: str) -> Dict[str, Any]:
     """Process image with EasyOCR and extract text."""
     import easyocr
-    
+
     logger.info(f"Starting OCR for file: {file_path}")
-    
-    reader = easyocr.Reader(['en', 'es'], gpu=False, verbose=False)
+
+    reader = easyocr.Reader(["en", "es"], gpu=False, verbose=False)
     result = reader.readtext(file_path)
-    
+
     extracted_text = []
     for detection in result:
         text = detection[1]
         confidence = detection[2]
-        extracted_text.append({
-            "text": text,
-            "confidence": confidence
-        })
-    
+        extracted_text.append({"text": text, "confidence": confidence})
+
     full_text = " ".join([item["text"] for item in extracted_text])
-    
+
     logger.info(f"OCR completed, extracted {len(extracted_text)} text segments")
-    
-    return {
-        "raw_text": extracted_text,
-        "full_text": full_text,
-        "status": "OCR_COMPLETED"
-    }
+
+    return {"raw_text": extracted_text, "full_text": full_text, "status": "OCR_COMPLETED"}
 
 
 def extract_invoice_fields(full_text: str) -> Dict[str, Any]:
     """Extract structured invoice data using Groq LLM."""
     from groq import Groq
-    
+
     if not GROQ_API_KEY:
         logger.error("GROQ_API_KEY not configured")
         return {"error": "GROQ_API_KEY not configured"}
-    
+
     logger.info("Starting LLM extraction for invoice fields")
-    
+
     client = Groq(api_key=GROQ_API_KEY)
-    
+
     prompt = f"""Eres un asistente especializado en extraer información de facturas.
 
 Extrae los siguientes campos del texto de factura y devuelve SOLO un JSON válido:
@@ -96,9 +88,9 @@ Responde ONLY con el JSON, sin texto adicional."""
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1
+            temperature=0.1,
         )
-        
+
         text = response.choices[0].message.content
         text = text.strip()
         if text.startswith("```json"):
@@ -107,13 +99,14 @@ Responde ONLY con el JSON, sin texto adicional."""
             text = text[3:]
         if text.endswith("```"):
             text = text[:-3]
-        
+
         import json
+
         extracted = json.loads(text.strip())
-        
+
         logger.info("LLM extraction completed successfully")
         return extracted
-        
+
     except Exception as e:
         logger.error(f"LLM extraction failed: {str(e)}")
         return {"error": f"Failed to parse LLM response: {str(e)}"}
