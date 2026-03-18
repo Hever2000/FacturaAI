@@ -4,7 +4,7 @@ AI agent guidance for the ZenithOCR project.
 
 ## Project Overview
 
-OCR + LLM invoice processing API for Argentine invoices. Built with FastAPI, PaddleOCR-VL, EasyOCR, and Groq (Llama 3.3).
+OCR + LLM invoice processing API for Argentine invoices. Built with FastAPI, PaddleOCR-VL, and Groq (Llama 3.3).
 
 ## Project Structure
 
@@ -164,14 +164,9 @@ def process_ocr(job_id: str, file_path: str):
     logger.info(f"OCR completed for job {job_id}")
 ```
 
-## OCR Providers
+## OCR
 
-The API supports two OCR providers:
-
-- **paddle_vl** (default): Remote PaddleOCR-VL API
-- **easyocr**: Local EasyOCR
-
-Usage: `POST /v1/process?ocr_provider=easyocr`
+The API uses **PaddleOCR-VL** remote API for OCR processing.
 
 ## Environment Variables
 
@@ -179,12 +174,9 @@ Usage: `POST /v1/process?ocr_provider=easyocr`
 # Required
 GROQ_API_KEY=your_groq_api_key
 
-# PaddleOCR-VL (optional)
+# PaddleOCR-VL (remote API)
 PADDLE_VL_API_URL=https://c6vceb62c4n8zfaf.aistudio-app.com/layout-parsing
 PADDLE_VL_TOKEN=your_token
-
-# OCR Settings
-OCR_PROVIDER=paddle_vl  # or easyocr
 
 # Optional
 API_HOST=0.0.0.0

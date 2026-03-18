@@ -4,7 +4,7 @@ import tempfile
 from typing import Any, Dict
 from uuid import uuid4
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile
 
 from src.core.ocr import extract_invoice_fields, process_ocr
 
@@ -21,25 +21,16 @@ app = FastAPI(
 
 jobs_db: Dict[str, Any] = {}
 
-OCR_PROVIDER = os.getenv("OCR_PROVIDER", "paddle_vl")
-
 
 @app.post("/v1/process", status_code=202, summary="Process invoice image")
-async def create_process_job(
-    file: UploadFile = File(...),  # noqa: B008
-    ocr_provider: str = Query(
-        default="paddle_vl",
-        description="OCR provider: paddle_vl or easyocr",
-    ),
-):
+async def create_process_job(file: UploadFile = File(...)):  # noqa: B008
     """
     Upload an invoice image and process it with OCR + LLM.
 
     - **file**: Invoice image (PNG, JPG, PDF)
-    - **ocr_provider**: OCR provider to use (paddle_vl or easyocr)
     - Returns job_id for status checking
     """
-    logger.info(f"Received file upload: {file.filename}, provider: {ocr_provider}")
+    logger.info(f"Received file upload: {file.filename}")
 
     job_id = str(uuid4())
     suffix = os.path.splitext(file.filename or ".png")[1] or ".png"
@@ -50,8 +41,8 @@ async def create_process_job(
         tmp_path = tmp.name
 
     try:
-        logger.info(f"Processing job {job_id}: OCR step ({ocr_provider})")
-        ocr_result = process_ocr(tmp_path, provider=ocr_provider)
+        logger.info(f"Processing job {job_id}: OCR step")
+        ocr_result = process_ocr(tmp_path)
 
         jobs_db[job_id] = {
             "id": job_id,
