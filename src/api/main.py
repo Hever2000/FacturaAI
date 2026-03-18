@@ -1,11 +1,12 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from uuid import uuid4
+import logging
 import os
 import tempfile
-import logging
-from typing import Dict, Any
+from typing import Any, Dict
+from uuid import uuid4
 
-from src.core.ocr import process_ocr, extract_invoice_fields
+from fastapi import FastAPI, File, HTTPException, UploadFile
+
+from src.core.ocr import extract_invoice_fields, process_ocr
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -22,7 +23,7 @@ jobs_db: Dict[str, Any] = {}
 
 
 @app.post("/v1/process", status_code=202, summary="Process invoice image")
-async def create_process_job(file: UploadFile = File(...)):
+async def create_process_job(file: UploadFile = File(...)):  # noqa: B008
     """
     Upload an invoice image and process it with OCR + LLM.
 
@@ -103,8 +104,9 @@ async def export_job_json(job_id: str):
         logger.warning(f"Job not processed: {job_id}")
         raise HTTPException(status_code=400, detail="Job not yet processed")
 
-    from fastapi.responses import Response
     import json
+
+    from fastapi.responses import Response
 
     export_data = {
         "job_id": job["id"],
