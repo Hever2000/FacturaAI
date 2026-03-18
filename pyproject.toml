@@ -21,6 +21,8 @@ dependencies = [
     "python-dotenv",
     "requests>=2.31.0",
     "tenacity>=8.2.0",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
 ]
 
 [tool.setuptools.packages.find]
