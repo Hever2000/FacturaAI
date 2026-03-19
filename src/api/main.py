@@ -1,7 +1,7 @@
 import logging
 import os
 import tempfile
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
@@ -34,10 +34,10 @@ app = FastAPI(
     version="1.0.0",
 )
 
-jobs_db: Dict[str, Any] = {}
+jobs_db: dict[str, Any] = {}
 
 
-def format_invoice_as_text(data: Dict[str, Any]) -> str:
+def format_invoice_as_text(data: dict[str, Any]) -> str:
     """
     Formatea los datos de la factura como texto plano legible.
 
@@ -358,7 +358,7 @@ async def export_training_data():
     """
     filepath = export_training_jsonl()
 
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         content = f.read()
 
     logger.info(f"Training data exported: {filepath}")

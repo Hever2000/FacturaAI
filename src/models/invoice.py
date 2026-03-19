@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -18,21 +17,17 @@ class JobStatus(str, Enum):
 class InvoiceItem(BaseModel):
     """Individual invoice line item."""
 
-    item_numero: Optional[int] = Field(None, description="Número de línea/item")
-    codigo: Optional[str] = Field(None, description="Código del producto/servicio")
+    item_numero: int | None = Field(None, description="Número de línea/item")
+    codigo: str | None = Field(None, description="Código del producto/servicio")
     descripcion: str = Field(..., description="Descripción del producto o servicio")
     cantidad: float = Field(default=1.0, ge=0, description="Cantidad")
-    unidad_medida: Optional[str] = Field(
-        None, description="Unidad de medida (ej: unidades, hs, kg)"
-    )
+    unidad_medida: str | None = Field(None, description="Unidad de medida (ej: unidades, hs, kg)")
     precio_unitario: float = Field(default=0.0, ge=0, description="Precio unitario sin IVA")
     subtotal_item: float = Field(..., ge=0, description="Subtotal del item (precio * cantidad)")
     total_item: float = Field(..., ge=0, description="Total del item (con/donde aplique IVA)")
-    alicuota_iva: Optional[str] = Field(
-        None, description="Alicuota de IVA (0%, 5%, 10.5%, 21%, 27%)"
-    )
-    importe_iva: Optional[float] = Field(default=0.0, ge=0, description="Importe de IVA del item")
-    bonificacion: Optional[float] = Field(
+    alicuota_iva: str | None = Field(None, description="Alicuota de IVA (0%, 5%, 10.5%, 21%, 27%)")
+    importe_iva: float | None = Field(default=0.0, ge=0, description="Importe de IVA del item")
+    bonificacion: float | None = Field(
         default=0.0, ge=0, description="Bonificación/descuento del item"
     )
 
@@ -40,7 +35,7 @@ class InvoiceItem(BaseModel):
 class InvoiceData(BaseModel):
     """Structured Argentine invoice data extracted by LLM."""
 
-    codigo_factura: Optional[str] = Field(
+    codigo_factura: str | None = Field(
         None, description="Código único de la factura (interno del sistema)"
     )
 
@@ -49,35 +44,35 @@ class InvoiceData(BaseModel):
     tipo_comprobante: str = Field(
         ..., description="Tipo (FC=Factura, ND=Nota Débito, NC=Nota Crédito)"
     )
-    letra_comprobante: Optional[str] = Field(None, description="Letra (A, B, C, M)")
+    letra_comprobante: str | None = Field(None, description="Letra (A, B, C, M)")
 
     fecha_emision: str = Field(..., description="Fecha de emisión (YYYY-MM-DD)")
-    fecha_vencimiento_pago: Optional[str] = Field(
+    fecha_vencimiento_pago: str | None = Field(
         None, description="Fecha de vencimiento para el pago (YYYY-MM-DD)"
     )
 
-    periodo_desde: Optional[str] = Field(None, description="Período facturado desde (YYYY-MM-DD)")
-    periodo_hasta: Optional[str] = Field(None, description="Período facturado hasta (YYYY-MM-DD)")
+    periodo_desde: str | None = Field(None, description="Período facturado desde (YYYY-MM-DD)")
+    periodo_hasta: str | None = Field(None, description="Período facturado hasta (YYYY-MM-DD)")
 
-    cae: Optional[str] = Field(None, description="Código de Autorización de Emisión (CAE)")
-    fecha_vencimiento_cae: Optional[str] = Field(
+    cae: str | None = Field(None, description="Código de Autorización de Emisión (CAE)")
+    fecha_vencimiento_cae: str | None = Field(
         None, description="Fecha de vencimiento del CAE (YYYY-MM-DD)"
     )
 
     razon_social_vendedor: str = Field(..., description="Razón Social del vendedor")
     vendedor_cuit: str = Field(..., description="CUIT del vendedor (formato XX-XXXXXXXX-X)")
     vendedor_condicion_iva: str = Field(..., description="Condición frente al IVA del vendedor")
-    vendedor_ingresos_brutos: Optional[str] = Field(
+    vendedor_ingresos_brutos: str | None = Field(
         None, description="Número de Inscripción en Ingresos Brutos"
     )
-    vendedor_domicilio: Optional[str] = Field(None, description="Domicilio comercial del vendedor")
-    vendedor_localidad: Optional[str] = Field(None, description="Localidad y CP del vendedor")
+    vendedor_domicilio: str | None = Field(None, description="Domicilio comercial del vendedor")
+    vendedor_localidad: str | None = Field(None, description="Localidad y CP del vendedor")
 
     razon_social_cliente: str = Field(..., description="Razón Social del cliente")
     cliente_cuit: str = Field(..., description="CUIT del cliente (formato XX-XXXXXXXX-X)")
     cliente_condicion_iva: str = Field(..., description="Condición frente al IVA del cliente")
-    cliente_domicilio: Optional[str] = Field(None, description="Domicilio del cliente")
-    cliente_localidad: Optional[str] = Field(None, description="Localidad y CP del cliente")
+    cliente_domicilio: str | None = Field(None, description="Domicilio del cliente")
+    cliente_localidad: str | None = Field(None, description="Localidad y CP del cliente")
 
     subtotal: float = Field(
         default=0.0, ge=0, description="Subtotal (suma de neto gravado + neto no gravado)"
@@ -106,11 +101,11 @@ class InvoiceData(BaseModel):
         ..., description="Condición de pago (Contado, Cuenta Corriente, Tarjeta, etc.)"
     )
 
-    items: List[InvoiceItem] = Field(
+    items: list[InvoiceItem] = Field(
         default_factory=list, description="Detalle de items de la factura"
     )
 
-    observaciones: Optional[str] = Field(None, description="Observaciones o notas adicionales")
+    observaciones: str | None = Field(None, description="Observaciones o notas adicionales")
 
 
 class JobResponse(BaseModel):
@@ -125,8 +120,8 @@ class JobDetail(BaseModel):
 
     id: str
     status: str
-    filename: Optional[str] = None
-    raw_text: Optional[List[dict]] = None
-    full_text: Optional[str] = None
-    extracted_data: Optional[dict] = None
-    error: Optional[str] = None
+    filename: str | None = None
+    raw_text: list[dict] | None = None
+    full_text: str | None = None
+    extracted_data: dict | None = None
+    error: str | None = None

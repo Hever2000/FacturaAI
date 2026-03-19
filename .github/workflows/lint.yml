@@ -1,0 +1,38 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install ruff black
+
+      - name: Run ruff auto-fix
+        run: |
+          ruff check . --fix || true
+
+      - name: Auto-fix and commit
+        uses: autofix-ci/action@7a166d7532b277f34e16238930461bf77f9d7ed8
+
+      - name: Run ruff check (strict)
+        run: |
+          ruff check .

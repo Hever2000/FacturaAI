@@ -2,7 +2,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger("factura_ai")
 
@@ -10,7 +10,7 @@ FEEDBACK_DB_PATH = Path("feedback_db.json")
 TRAINING_DATA_DIR = Path("training_data")
 
 
-def get_default_feedback_db() -> Dict[str, Any]:
+def get_default_feedback_db() -> dict[str, Any]:
     """Retorna estructura inicial de la base de feedback."""
     return {
         "corrections": [],
@@ -21,20 +21,20 @@ def get_default_feedback_db() -> Dict[str, Any]:
     }
 
 
-def load_feedback_db() -> Dict[str, Any]:
+def load_feedback_db() -> dict[str, Any]:
     """Carga la base de feedback desde archivo JSON."""
     if not FEEDBACK_DB_PATH.exists():
         return get_default_feedback_db()
 
     try:
-        with open(FEEDBACK_DB_PATH, "r", encoding="utf-8") as f:
+        with open(FEEDBACK_DB_PATH, encoding="utf-8") as f:
             return json.load(f)
-    except (json.JSONDecodeError, IOError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         logger.error(f"Error loading feedback DB: {e}")
         return get_default_feedback_db()
 
 
-def save_feedback_db(db: Dict[str, Any]) -> None:
+def save_feedback_db(db: dict[str, Any]) -> None:
     """Guarda la base de feedback a archivo JSON."""
     FEEDBACK_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(FEEDBACK_DB_PATH, "w", encoding="utf-8") as f:
@@ -47,8 +47,8 @@ def add_correction(
     wrong_value: Any,
     correct_value: Any,
     raw_text: str,
-    extracted_data: Dict[str, Any],
-) -> Dict[str, Any]:
+    extracted_data: dict[str, Any],
+) -> dict[str, Any]:
     """
     Agrega una corrección a la base de feedback.
 
@@ -87,7 +87,7 @@ def add_correction(
     return correction
 
 
-def load_feedback_examples(limit: int = 5) -> List[Dict[str, Any]]:
+def load_feedback_examples(limit: int = 5) -> list[dict[str, Any]]:
     """
     Carga ejemplos de correcciones para usar en few-shot learning.
 
@@ -102,7 +102,7 @@ def load_feedback_examples(limit: int = 5) -> List[Dict[str, Any]]:
     return corrections[-limit:] if corrections else []
 
 
-def generate_training_dataset() -> List[Dict[str, Any]]:
+def generate_training_dataset() -> list[dict[str, Any]]:
     """
     Genera dataset de entrenamiento desde feedback y jobs procesados.
 
@@ -149,7 +149,7 @@ def generate_training_dataset() -> List[Dict[str, Any]]:
     return dataset
 
 
-def export_training_jsonl(filepath: Optional[str] = None) -> str:
+def export_training_jsonl(filepath: str | None = None) -> str:
     """
     Exporta el dataset de entrenamiento en formato JSONL.
 
@@ -175,11 +175,11 @@ def export_training_jsonl(filepath: Optional[str] = None) -> str:
     return filepath
 
 
-def get_feedback_stats() -> Dict[str, Any]:
+def get_feedback_stats() -> dict[str, Any]:
     """Retorna estadísticas del feedback."""
     db = load_feedback_db()
 
-    field_counts: Dict[str, int] = {}
+    field_counts: dict[str, int] = {}
     for corr in db.get("corrections", []):
         field = corr["field"]
         field_counts[field] = field_counts.get(field, 0) + 1

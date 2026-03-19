@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import re
-from typing import Any, Dict, Union
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -11,7 +11,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
-def parse_argentine_number(value: Union[str, int, float, None]) -> Union[float, int, None]:
+def parse_argentine_number(value: str | int | float | None) -> float | int | None:
     """
     Convierte números en formato argentino al formato estándar de Python.
 
@@ -75,7 +75,7 @@ def parse_argentine_number(value: Union[str, int, float, None]) -> Union[float, 
         return None
 
 
-def normalize_numeric_fields(data: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_numeric_fields(data: dict[str, Any]) -> dict[str, Any]:
     """
     Normaliza todos los campos numéricos en el resultado de la extracción.
 
@@ -166,7 +166,7 @@ def create_session_with_retries() -> requests.Session:
     return session
 
 
-def process_ocr_with_easyocr(file_path: str) -> Dict[str, Any]:
+def process_ocr_with_easyocr(file_path: str) -> dict[str, Any]:
     """Process image with EasyOCR as fallback."""
     if not EASYOCR_AVAILABLE:
         logger.error("EasyOCR not installed")
@@ -205,7 +205,7 @@ def process_ocr_with_easyocr(file_path: str) -> Dict[str, Any]:
         return {"error": str(e), "status": "OCR_FAILED"}
 
 
-def process_ocr(file_path: str) -> Dict[str, Any]:
+def process_ocr(file_path: str) -> dict[str, Any]:
     """Process image with PaddleOCR-VL remote API, with EasyOCR as fallback."""
     logger.info(f"Starting PaddleOCR-VL for file: {file_path}")
 
@@ -268,7 +268,7 @@ def process_ocr(file_path: str) -> Dict[str, Any]:
         return process_ocr_with_easyocr(file_path)
 
 
-def extract_invoice_fields(full_text: str) -> Dict[str, Any]:
+def extract_invoice_fields(full_text: str) -> dict[str, Any]:
     """Extract structured invoice data using Groq LLM."""
     from groq import Groq
 
