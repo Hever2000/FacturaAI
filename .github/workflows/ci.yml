@@ -66,11 +66,11 @@ jobs:
       
       - name: Build Docker image
         run: |
-          docker build -t zenith-ocr:latest .
+          docker build -t facturaai:latest .
           
       - name: Test Docker image
         run: |
-          docker run -d -p 8000:8000 --name zenith-ocr-test zenith-ocr:latest
+          docker run -d -p 8000:8000 --name facturaai-test facturaai:latest
           sleep 10
           curl -f http://localhost:8000/health || exit 1
-          docker stop zenith-ocr-test
+          docker stop facturaai-test

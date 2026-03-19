@@ -1,6 +1,6 @@
-# AGENTS.md - ZenithOCR Developer Guide
+# AGENTS.md - Guía de Desarrollo de FacturaAI
 
-AI agent guidance for the ZenithOCR project.
+Guía para agentes IA del proyecto FacturaAI.
 
 ## Project Overview
 
@@ -9,7 +9,7 @@ OCR + LLM invoice processing API for Argentine invoices. Built with FastAPI, Pad
 ## Project Structure
 
 ```
-zenith-ocr/
+facturaai/
 ├── src/
 │   ├── api/main.py         # FastAPI endpoints
 │   ├── core/ocr.py        # OCR & LLM logic

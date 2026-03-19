@@ -1,5 +1,5 @@
 #!/bin/bash
-# ZenithOCR Lint Fix Script
+# FacturaAI Lint Fix Script
 # Runs automatic code formatting and fixes
 
 set -e

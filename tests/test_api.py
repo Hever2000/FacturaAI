@@ -10,7 +10,7 @@ def test_health_check():
 
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
-    assert response.json()["service"] == "zenith-ocr"
+    assert response.json()["service"] == "factura-ai"
 
 
 def test_job_not_found():

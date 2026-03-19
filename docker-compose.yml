@@ -3,7 +3,7 @@ version: '3.8'
 services:
   api:
     build: .
-    container_name: zenith-ocr-api
+    container_name: facturaai-api
     ports:
       - "8000:8000"
     environment:
@@ -21,4 +21,4 @@ services:
 
 networks:
   default:
-    name: zenith-ocr-network
+    name: facturaai-network

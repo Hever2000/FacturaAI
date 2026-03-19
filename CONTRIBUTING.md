@@ -1,52 +1,52 @@
-# Contributing to ZenithOCR
+# Contribuir a FacturaAI
 
-Thank you for your interest in contributing!
+¡Gracias por tu interés en contribuir!
 
-## Development Setup
+## Configuración del Entorno de Desarrollo
 
-1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/zenith-ocr.git`
-3. Create a feature branch: `git checkout -b feature/your-feature`
+1. Haz un fork del repositorio
+2. Clona tu fork: `git clone https://github.com/TU_USUARIO/facturaai.git`
+3. Crea una rama de características: `git checkout -b feature/tu-caracteristica`
 
-## Code Style
+## Estilo de Código
 
-- Follow PEP 8
-- Use type hints
-- Maximum line length: 100 characters
-- Run formatting before committing:
+- Sigue PEP 8
+- Usa type hints
+- Longitud máxima de línea: 100 caracteres
+- Ejecuta el formateo antes de commitear:
   ```bash
   black src/ --line-length 100
   isort src/
   ```
 
-## Testing
+## Pruebas
 
 ```bash
-# Run tests
+# Ejecutar pruebas
 pytest tests/ -v
 
-# Run with coverage
+# Ejecutar con cobertura
 pytest --cov=src tests/
 ```
 
-## Commit Messages
+## Mensajes de Commit
 
-Use conventional commits:
+Usa commits convencionales:
 
-- `feat: add new feature`
-- `fix: bug fix`
-- `docs: update documentation`
-- `refactor: code refactoring`
-- `test: add tests`
+- `feat: agregar nueva característica`
+- `fix: corrección de bug`
+- `docs: actualizar documentación`
+- `refactor: refactorización de código`
+- `test: agregar pruebas`
 
-## Pull Request Process
+## Proceso de Pull Request
 
-1. Update documentation if needed
-2. Add tests for new features
-3. Ensure all tests pass
-4. Update the CHANGELOG if applicable
-5. Request review
+1. Actualiza la documentación si es necesario
+2. Agrega pruebas para nuevas características
+3. Asegúrate de que todas las pruebas pasen
+4. Actualiza el CHANGELOG si aplica
+5. Solicita revisión
 
-## Questions?
+## ¿Preguntas?
 
-Open an issue for questions about contributing.
+Abre un issue para preguntas sobre cómo contribuir.

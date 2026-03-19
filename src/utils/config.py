@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # API
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_title: str = "ZenithOCR API"
+    api_title: str = "FacturaAI API"
     api_version: str = "1.0.0"
 
     # Groq

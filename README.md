@@ -1,143 +1,142 @@
-# ZenithOCR
+# FacturaAI
 
-OCR + LLM invoice processing API for Argentine invoices.
+API para procesamiento de facturas argentinas utilizando OCR e IA. Extrae automáticamente datos estructurados de comprobantes y receipts.
 
-## Features
+## Características
 
-- **OCR**: Extract text from invoice images using EasyOCR
-- **LLM Extraction**: Parse structured data using Groq (Llama 3.3)
-- **Export**: Download processed data as JSON
-- **REST API**: FastAPI-based RESTful interface
-- **Docker**: Ready for production deployment
+- **OCR**: Extrae texto de imágenes de facturas usando PaddleOCR-VL
+- **Extracción con IA**: Analiza datos estructurados usando Groq (Llama 3.3)
+- **Exportación**: Descarga datos procesados en formato JSON
+- **API REST**: Interfaz basada en FastAPI
+- **Docker**: Listo para despliegue en producción
 
-## Supported Invoice Fields
+## Campos de Factura Soportados
 
-- Invoice number, date, due date
-- Vendor info (name, CUIT, address, IVA condition)
-- Customer info (name, CUIT, address)
-- Line items (description, quantity, price, amount)
-- Financial totals (subtotal, tax, total)
-- Payment conditions and invoice type
+- Número de factura, fecha de emisión, fecha de vencimiento
+- Información del vendedor (nombre, CUIT, dirección, condición de IVA)
+- Información del cliente (nombre, CUIT, dirección)
+- Ítems de la línea (descripción, cantidad, precio, importe)
+- Totales financieros (subtotal, impuestos, total)
+- Condiciones de pago y tipo de factura
 
-## Requirements
+## Requisitos
 
 - Python 3.12+
-- Groq API Key ([get one here](https://console.groq.com/))
+- Clave de API de Groq ([obtener aquí](https://console.groq.com/))
 
-## Installation
+## Instalación
 
-### Local Development
+### Desarrollo Local
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/zenith-ocr.git
-cd zenith-ocr
+# Clonar el repositorio
+git clone https://github.com/tuusuario/facturaai.git
+cd facturaai
 
-# Create virtual environment
+# Crear entorno virtual
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-# or
+# o
 venv\Scripts\activate  # Windows
 
-# Install dependencies
+# Instalar dependencias
 pip install -r requirements.txt
 
-# Configure environment
+# Configurar entorno
 cp .env.example .env
-# Edit .env and add your GROQ_API_KEY
+# Editar .env y agregar tu GROQ_API_KEY
 
-# Run the server
+# Ejecutar el servidor
 uvicorn src.api.main:app --reload
 ```
 
 ### Docker
 
 ```bash
-# Build and run with Docker
+# Construir y ejecutar con Docker
 docker-compose up --build
 
-# Or build manually
-docker build -t zenith-ocr .
-docker run -p 8000:8000 -e GROQ_API_KEY=your_key zenith-ocr
+# O construir manualmente
+docker build -t facturaai .
+docker run -p 8000:8000 -e GROQ_API_KEY=tu_clave facturaai
 ```
 
-## Usage
+## Uso
 
-### API Endpoints
+### Endpoints de la API
 
-| Endpoint | Method | Description |
+| Endpoint | Método | Descripción |
 |----------|--------|-------------|
-| `/v1/process` | POST | Upload invoice for processing |
-| `/v1/jobs/{job_id}` | GET | Get job status and results |
-| `/v1/jobs/{job_id}/export` | GET | Export as JSON file |
-| `/health` | GET | Health check |
+| `/v1/process` | POST | Subir factura para procesar |
+| `/v1/jobs/{job_id}` | GET | Obtener estado del trabajo y resultados |
+| `/v1/jobs/{job_id}/export` | GET | Exportar como archivo JSON |
+| `/health` | GET | Verificación de salud |
 
-### Example: Process Invoice
+### Ejemplo: Procesar Factura
 
 ```bash
-# Upload invoice
-curl -X POST -F "file=@invoice.png" http://localhost:8000/v1/process
+# Subir factura
+curl -X POST -F "file=@factura.png" http://localhost:8000/v1/process
 
-# Response:
+# Respuesta:
 # {"job_id": "abc-123", "status": "PROCESSED"}
 
-# Get results
+# Obtener resultados
 curl http://localhost:8000/v1/jobs/abc-123
 
-# Export JSON
-curl http://localhost:8000/v1/jobs/abc-123/export -o invoice.json
+# Exportar JSON
+curl http://localhost:8000/v1/jobs/abc-123/export -o factura.json
 ```
 
-### Python Client
+### Cliente Python
 
 ```python
 import requests
 
-# Upload
-with open("invoice.png", "rb") as f:
+# Subir
+with open("factura.png", "rb") as f:
     response = requests.post(
         "http://localhost:8000/v1/process",
         files={"file": f}
     )
 job_id = response.json()["job_id"]
 
-# Get results
+# Obtener resultados
 result = requests.get(f"http://localhost:8000/v1/jobs/{job_id}").json()
 print(result["extracted_data"])
 ```
 
-## Project Structure
+## Estructura del Proyecto
 
 ```
-zenith-ocr/
+facturaai/
 ├── src/
-│   ├── api/          # FastAPI endpoints
-│   ├── core/        # OCR & LLM logic
-│   ├── models/      # Pydantic models
-│   └── utils/       # Utilities
-├── tests/           # Test files
-├── docker/          # Docker configs
-├── docs/            # Documentation
+│   ├── api/          # Endpoints de FastAPI
+│   ├── core/         # Lógica de OCR e IA
+│   ├── models/       # Modelos Pydantic
+│   └── utils/        # Utilidades
+├── tests/            # Archivos de prueba
+├── docs/             # Documentación
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
 └── README.md
 ```
 
-## Configuration
+## Configuración
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GROQ_API_KEY` | Groq API key (required) | - |
-| `API_HOST` | API host | `0.0.0.0` |
-| `API_PORT` | API port | `8000` |
-| `OCR_LANGUAGES` | OCR languages | `en,es` |
-| `LOG_LEVEL` | Logging level | `INFO` |
+| Variable | Descripción | Valor por defecto |
+|----------|-------------|-------------------|
+| `GROQ_API_KEY` | Clave de API de Groq (requerido) | - |
+| `API_HOST` | Host de la API | `0.0.0.0` |
+| `API_PORT` | Puerto de la API | `8000` |
+| `OCR_LANGUAGES` | Idiomas para OCR | `en,es` |
+| `LOG_LEVEL` | Nivel de logging | `INFO` |
 
-## License
+## Licencia
 
-MIT License - see [LICENSE](LICENSE) for details.
+Licencia MIT - ver [LICENSE](LICENSE) para más detalles.
 
-## Contributing
+## Contribuir
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Ver [CONTRIBUTING.md](CONTRIBUTING.md) para las directrices.

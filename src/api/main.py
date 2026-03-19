@@ -11,10 +11,10 @@ from src.core.ocr import extract_invoice_fields, process_ocr
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger("zenith_ocr")
+logger = logging.getLogger("factura_ai")
 
 app = FastAPI(
-    title="ZenithOCR API",
+    title="FacturaAI API",
     description="OCR + LLM invoice processing API for Argentine invoices",
     version="1.0.0",
 )
@@ -44,12 +44,18 @@ async def create_process_job(file: UploadFile = File(...)):  # noqa: B008
         logger.info(f"Processing job {job_id}: OCR step")
         ocr_result = process_ocr(tmp_path)
 
+        if "error" in ocr_result or ocr_result.get("status") == "OCR_FAILED":
+            error_msg = ocr_result.get("error", "Unknown OCR error")
+            logger.error(f"OCR failed for job {job_id}: {error_msg}")
+            raise Exception(f"OCR processing failed: {error_msg}")
+
         jobs_db[job_id] = {
             "id": job_id,
             "status": "PROCESSING_LLM",
             "filename": file.filename,
             "raw_text": ocr_result["raw_text"],
             "full_text": ocr_result["full_text"],
+            "ocr_engine": ocr_result.get("ocr_engine", "unknown"),
         }
 
         logger.info(f"Processing job {job_id}: LLM extraction step")
@@ -111,6 +117,7 @@ async def export_job_json(job_id: str):
     export_data = {
         "job_id": job["id"],
         "filename": job["filename"],
+        "ocr_engine": job.get("ocr_engine", "unknown"),
         "invoice_data": job.get("extracted_data", {}),
         "raw_text": job.get("full_text", ""),
     }
@@ -127,4 +134,4 @@ async def export_job_json(job_id: str):
 @app.get("/health", summary="Health check")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "zenith-ocr"}
+    return {"status": "healthy", "service": "factura-ai"}
