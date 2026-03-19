@@ -14,60 +14,60 @@ from urllib3.util.retry import Retry
 def parse_argentine_number(value: Union[str, int, float, None]) -> Union[float, int, None]:
     """
     Convierte números en formato argentino al formato estándar de Python.
-    
+
     Formato argentino: 1.234,56 (punto = miles, coma = decimal)
     Formato estándar:  1234.56 (punto = decimal)
-    
+
     Args:
         value: String, int, float o None con el número a convertir
-        
+
     Returns:
         float o int con el valor numérico estándar, o None si no se puede convertir
     """
     if value is None:
         return None
-    
+
     if isinstance(value, (int, float)):
         return float(value)
-    
+
     if not isinstance(value, str):
         return None
-    
+
     value = value.strip()
     if not value:
         return None
-    
+
     # Eliminar símbolos de moneda y espacios
-    value = re.sub(r'[$€£¥₹\s]', '', value)
-    
+    value = re.sub(r"[$€£¥₹\s]", "", value)
+
     # Si tiene el formato argentino (coma como decimal, punto como miles)
     # Ejemplo: 1.234,56 o 1.234.567,89
-    if re.search(r'\d{1,3}(\.\d{3})+,\d+$', value) or re.search(r'\d{1,3}(\.\d{3})+,\d+$', value):
+    if re.search(r"\d{1,3}(\.\d{3})+,\d+$", value) or re.search(r"\d{1,3}(\.\d{3})+,\d+$", value):
         # Eliminar puntos de miles y reemplazar coma decimal por punto
-        value = value.replace('.', '').replace(',', '.')
+        value = value.replace(".", "").replace(",", ".")
         try:
             return float(value)
         except ValueError:
             return None
-    
+
     # Si solo tiene coma como posible decimal (sin puntos de miles ambiguos)
     # Ejemplo: 1234,56 o 1234,5
-    if ',' in value and '.' not in value:
-        value = value.replace(',', '.')
+    if "," in value and "." not in value:
+        value = value.replace(",", ".")
         try:
             return float(value)
         except ValueError:
             return None
-    
+
     # Si tiene punto como decimal sin formato de miles argentino
     # Ejemplo: 1234.56 (ya está en formato estándar)
     try:
         result = float(value)
-        # Si el resultado es muy grande y tiene más de 2 decimales, 
+        # Si el resultado es muy grande y tiene más de 2 decimales,
         # podría ser un error de formato
         # En Argentina, los precios usually tienen máximo 2 decimales
-        if result >= 1000 and '.' in value:
-            parts = value.split('.')
+        if result >= 1000 and "." in value:
+            parts = value.split(".")
             if len(parts) == 2 and len(parts[1]) <= 2:
                 return result
         return result
@@ -78,38 +78,54 @@ def parse_argentine_number(value: Union[str, int, float, None]) -> Union[float, 
 def normalize_numeric_fields(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normaliza todos los campos numéricos en el resultado de la extracción.
-    
+
     Convierte strings con formato argentino a números estándar de Python.
-    
+
     Args:
         data: Diccionario con los datos extraídos de la factura
-        
+
     Returns:
         Diccionario con los campos numéricos normalizados
     """
     numeric_fields = [
-        'subtotal', 'total', 'importe_neto_gravado', 'importe_neto_no_gravado',
-        'importe_exento', 'iva_27', 'iva_21', 'iva_10_5', 'iva_5', 'iva_2_5',
-        'iva_0', 'total_iva', 'importe_otros_tributos', 'total_tributos',
-        'precio_unitario', 'subtotal_item', 'total_item', 'importe_iva',
-        'bonificacion', 'cantidad'
+        "subtotal",
+        "total",
+        "importe_neto_gravado",
+        "importe_neto_no_gravado",
+        "importe_exento",
+        "iva_27",
+        "iva_21",
+        "iva_10_5",
+        "iva_5",
+        "iva_2_5",
+        "iva_0",
+        "total_iva",
+        "importe_otros_tributos",
+        "total_tributos",
+        "precio_unitario",
+        "subtotal_item",
+        "total_item",
+        "importe_iva",
+        "bonificacion",
+        "cantidad",
     ]
-    
+
     result = data.copy()
-    
+
     for field in numeric_fields:
         if field in result:
             result[field] = parse_argentine_number(result[field])
-    
+
     # Normalizar items
-    if 'items' in result and isinstance(result['items'], list):
-        for i, item in enumerate(result['items']):
+    if "items" in result and isinstance(result["items"], list):
+        for i, item in enumerate(result["items"]):
             if isinstance(item, dict):
                 for field in numeric_fields:
                     if field in item:
-                        result['items'][i][field] = parse_argentine_number(item[field])
-    
+                        result["items"][i][field] = parse_argentine_number(item[field])
+
     return result
+
 
 try:
     import easyocr
@@ -363,7 +379,7 @@ def extract_invoice_fields(full_text: str) -> Dict[str, Any]:
             text = text[:-3]
 
         extracted = json.loads(text.strip())
-        
+
         extracted = normalize_numeric_fields(extracted)
 
         logger.info("LLM extraction completed successfully")

@@ -119,17 +119,13 @@ def test_connection(api_url: str, token: str) -> bool:
                 print("[OK] OCR function is working!")
                 return True
             elif resp.status_code == 403:
-                print(
-                    "[FAIL] Token verification failed, please check if the Token is correct"
-                )
+                print("[FAIL] Token verification failed, please check if the Token is correct")
                 return False
             elif resp.status_code == 429:
                 print("[WARN] API quota exhausted, but connection is working")
                 return True
             else:
-                print(
-                    f"[WARN] API returned error: {resp_json.get('errorMsg', 'Unknown error')}"
-                )
+                print(f"[WARN] API returned error: {resp_json.get('errorMsg', 'Unknown error')}")
                 return False
         finally:
             client.close()
@@ -143,9 +139,7 @@ def test_connection(api_url: str, token: str) -> bool:
         return False
 
 
-def save_config(
-    api_url: str, token: str, project_root: Path, quiet: bool = False
-) -> bool:
+def save_config(api_url: str, token: str, project_root: Path, quiet: bool = False) -> bool:
     """
     Save configuration to .env file
 
