@@ -11,6 +11,7 @@ from urllib3.util.retry import Retry
 
 try:
     import easyocr
+
     EASYOCR_AVAILABLE = True
 except ImportError:
     EASYOCR_AVAILABLE = False
@@ -62,11 +63,13 @@ def process_ocr_with_easyocr(file_path: str) -> Dict[str, Any]:
         extracted_text = []
         for i, (_bbox, text, confidence) in enumerate(results):
             if text.strip():
-                extracted_text.append({
-                    "text": text.strip(),
-                    "confidence": confidence if confidence else 1.0,
-                    "block": i
-                })
+                extracted_text.append(
+                    {
+                        "text": text.strip(),
+                        "confidence": confidence if confidence else 1.0,
+                        "block": i,
+                    }
+                )
 
         full_text = " ".join([item["text"] for item in extracted_text])
 
@@ -76,7 +79,7 @@ def process_ocr_with_easyocr(file_path: str) -> Dict[str, Any]:
             "raw_text": extracted_text,
             "full_text": full_text,
             "status": "OCR_COMPLETED",
-            "ocr_engine": "easyocr"
+            "ocr_engine": "easyocr",
         }
 
     except Exception as e:
@@ -111,14 +114,11 @@ def process_ocr(file_path: str) -> Dict[str, Any]:
         payload = {**required_payload, **optional_payload}
 
         logger.info("Sending request to PaddleOCR-VL API...")
-        response = session.post(
-            PADDLE_VL_API_URL, json=payload, headers=headers, timeout=180
-        )
+        response = session.post(PADDLE_VL_API_URL, json=payload, headers=headers, timeout=180)
 
         if response.status_code != 200:
             logger.warning(
-                f"PaddleOCR-VL API error: {response.status_code}, "
-                "trying EasyOCR fallback"
+                f"PaddleOCR-VL API error: {response.status_code}, " "trying EasyOCR fallback"
             )
             return process_ocr_with_easyocr(file_path)
 
@@ -139,7 +139,7 @@ def process_ocr(file_path: str) -> Dict[str, Any]:
             "raw_text": extracted_text,
             "full_text": full_text,
             "status": "OCR_COMPLETED",
-            "ocr_engine": "paddleocr"
+            "ocr_engine": "paddleocr",
         }
 
     except requests.exceptions.Timeout:
@@ -221,7 +221,7 @@ def extract_invoice_fields(full_text: str) -> Dict[str, Any]:
         '            "importe_iva": 0.00,\n'
         '            "bonificacion": 0.00\n'
         "        }\n"
-        '    ],\n\n'
+        "    ],\n\n"
         '    "observaciones": "Observaciones o notas adicionales (si existen)"\n'
         "}\n\n"
         "REGLAS IMPORTANTES:\n"
