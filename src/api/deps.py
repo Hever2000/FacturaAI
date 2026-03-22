@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -130,7 +130,7 @@ async def check_monthly_quota(user: User) -> None:
     if user.monthly_request_count >= user.request_limit:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Monthly quota exceeded. Upgrade your plan at /v1/subscriptions.",
+            detail="Monthly quota exceeded. Upgrade your plan at /v1/subscriptions.",
         )
 
 

@@ -1,5 +1,5 @@
 """Pytest configuration and fixtures for FacturaAI tests."""
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, patch
 
 import pytest

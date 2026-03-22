@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 
 from src.api.deps import CurrentUser
-from src.schemas.apikey import APIKeyResponse
-from src.services.apikey import APIKeyService, rate_limiter
+from src.services.apikey import rate_limiter
 
 router = APIRouter(prefix="/rate-limit", tags=["Rate Limiting"])
 

@@ -2,9 +2,8 @@ import hashlib
 import hmac
 import logging
 from datetime import timedelta
-from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Header, Request, status
+from fastapi import APIRouter, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings

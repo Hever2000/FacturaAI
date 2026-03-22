@@ -4,8 +4,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import AsyncClient
 
-from src.models.user import User
-
 
 @pytest.mark.asyncio
 async def test_list_plans(client: AsyncClient):
