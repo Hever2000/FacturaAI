@@ -1,76 +1,150 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, feat/**, fix/**]
   pull_request:
     branches: [main]
 
+env:
+  PYTHON_VERSION: "3.12"
+
 jobs:
-  test:
+  # ---------------------------------------------------------------------------
+  # Lint — fast, runs in parallel
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linting tools
+        run: pip install ruff black isort
+
+      - name: Run ruff check
+        run: ruff check src/ tests/
+
+      - name: Run black check
+        run: black --check src/ tests/ --line-length 100
+
+      - name: Run isort check
+        run: isort --check-only src/ tests/
+
+  # ---------------------------------------------------------------------------
+  # Tests — with PostgreSQL + Redis services
+  # ---------------------------------------------------------------------------
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: facturaai_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres123
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install -e .
-          
+          pip install pytest pytest-asyncio pytest-cov httpx aiosqlite pytest-mock
+
+      - name: Run database migrations
+        run: |
+          alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/facturaai_test
+
       - name: Run tests
         run: |
-          pip install pytest pytest-cov
-          pytest tests/ -v --cov=src
+          pytest tests/ -v --cov=src --cov-report=xml --cov-fail-under=40
         env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres123@localhost:5432/facturaai_test
+          REDIS_URL: redis://localhost:6379/0
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          
-  lint:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          
-      - name: Install linting tools
-        run: |
-          pip install ruff black isort
-          
-      - name: Run ruff
-        run: |
-          ruff check src/
-          
-      - name: Run black
-        run: |
-          black --check src/ --line-length 100
-          
-      - name: Run isort
-        run: |
-          isort --check-only src/
+          PADDLE_VL_TOKEN: ${{ secrets.PADDLE_VL_TOKEN }}
+          MERCADO_PAGO_ENABLED: "false"
 
-  build-docker:
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: success()
+        with:
+          files: ./coverage.xml
+          flags: unittests
+
+  # ---------------------------------------------------------------------------
+  # Docker build — only if lint + tests pass
+  # ---------------------------------------------------------------------------
+  docker:
+    name: Docker Build
     runs-on: ubuntu-latest
-    needs: [test, lint]
-    
+    needs: [lint, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Build Docker image
-        run: |
-          docker build -t facturaai:latest .
-          
-      - name: Test Docker image
-        run: |
-          docker run -d -p 8000:8000 --name facturaai-test facturaai:latest
-          sleep 10
-          curl -f http://localhost:8000/health || exit 1
-          docker stop facturaai-test
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version
+        id: vars
+        run: echo "VERSION=$(date +%Y.%m.%d-${GITHUB_RUN_NUMBER})" >> $GITHUB_OUTPUT
+
+      - name: Build and push (dev)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/facturaai:${{ steps.vars.outputs.VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/facturaai:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push (production)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: prod
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/facturaai:${{ steps.vars.outputs.VERSION }}-prod
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

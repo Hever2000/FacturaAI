@@ -152,3 +152,18 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Data files
+feedback_db.json
+storage/
+
+# Node (if frontend added)
+node_modules/
+package.json
+package-lock.json
+
+# Scripts
+scripts/
+
+# IDE
+cursor/

@@ -1,3 +1,4 @@
+from src.db.redis import close_redis, get_redis, init_redis
 from src.db.session import (
     Base,
     async_session_factory,
@@ -16,4 +17,7 @@ __all__ = [
     "init_db",
     "close_db",
     "Base",
+    "init_redis",
+    "close_redis",
+    "get_redis",
 ]

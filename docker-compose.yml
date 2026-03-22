@@ -1,26 +1,182 @@
-version: '3.8'
+version: '3.9'
 
 services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — main database
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: facturaai-postgres
+    environment:
+      POSTGRES_DB: facturaai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d facturaai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Redis — rate limiting + caching
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: facturaai-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # API (development) — hot reload enabled
+  # ---------------------------------------------------------------------------
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
     container_name: facturaai-api
+    environment:
+      APP_NAME: FacturaAI
+      ENVIRONMENT: development
+      DEBUG: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/facturaai
+      DATABASE_POOL_SIZE: "10"
+      DATABASE_MAX_OVERFLOW: "5"
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      PADDLE_VL_API_URL: ${PADDLE_VL_API_URL:-https://c6vceb62c4n8zfaf.aistudio-app.com/layout-parsing}
+      PADDLE_VL_TOKEN: ${PADDLE_VL_TOKEN}
+      MERCADO_PAGO_ACCESS_TOKEN: ${MERCADO_PAGO_ACCESS_TOKEN:-}
+      MERCADO_PAGO_WEBHOOK_SECRET: ${MERCADO_PAGO_WEBHOOK_SECRET:-}
+      MERCADO_PAGO_ENABLED: ${MERCADO_PAGO_ENABLED:-false}
+      STORAGE_PATH: /app/storage
+      MAX_FILE_SIZE_MB: "10"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:5173"
+    volumes:
+      - ./src:/app/src:ro
+      - app_storage:/app/storage
+      - ./alembic:/app/alembic:ro
     ports:
       - "8000:8000"
-    environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - PADDLE_VL_API_URL=${PADDLE_VL_API_URL:-https://c6vceb62c4n8zfaf.aistudio-app.com/layout-parsing}
-      - PADDLE_VL_TOKEN=${PADDLE_VL_TOKEN}
-      - OCR_LANGUAGES=en,es
-      - LOG_LEVEL=INFO
-    volumes:
-      - ./src:/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Running database migrations...' &&
+        alembic upgrade head &&
+        echo 'Starting API server (reload mode)...' &&
+        uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+      "
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
 
+  # ---------------------------------------------------------------------------
+  # API (production) — multi-worker, no debug
+  # ---------------------------------------------------------------------------
+  api-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    container_name: facturaai-api-prod
+    environment:
+      APP_NAME: FacturaAI
+      ENVIRONMENT: production
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/facturaai
+      DATABASE_POOL_SIZE: "20"
+      DATABASE_MAX_OVERFLOW: "10"
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY required in production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      GROQ_API_KEY: ${GROQ_API_KEY:?GROQ_API_KEY required}
+      PADDLE_VL_API_URL: ${PADDLE_VL_API_URL:-https://c6vceb62c4n8zfaf.aistudio-app.com/layout-parsing}
+      PADDLE_VL_TOKEN: ${PADDLE_VL_TOKEN}
+      MERCADO_PAGO_ACCESS_TOKEN: ${MERCADO_PAGO_ACCESS_TOKEN:-}
+      MERCADO_PAGO_WEBHOOK_SECRET: ${MERCADO_PAGO_WEBHOOK_SECRET:-}
+      MERCADO_PAGO_ENABLED: ${MERCADO_PAGO_ENABLED:-false}
+      STORAGE_PATH: /app/storage
+      MAX_FILE_SIZE_MB: "10"
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://facturaai.com}
+    volumes:
+      - app_storage:/app/storage
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head && uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Alembic CLI — run migrations manually
+  # ---------------------------------------------------------------------------
+  alembic:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: facturaai-alembic
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/facturaai
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["alembic"]
+
+# ---------------------------------------------------------------------------
+# Volumes
+# ---------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_storage:
+    driver: local
+
+# ---------------------------------------------------------------------------
+# Networks
+# ---------------------------------------------------------------------------
 networks:
   default:
     name: facturaai-network
+    driver: bridge
