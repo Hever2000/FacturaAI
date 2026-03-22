@@ -133,10 +133,10 @@ def upgrade() -> None:
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("job_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("field_name", sa.String(255), nullable=False),
-        sa.Column("original_value", postgresql.JSON(astext=True), nullable=True),
-        sa.Column("corrected_value", postgresql.JSON(astext=True), nullable=False),
+        sa.Column("original_value", postgresql.JSON(), nullable=True),
+        sa.Column("corrected_value", postgresql.JSON(), nullable=False),
         sa.Column("raw_text_snippet", sa.Text(), nullable=True),
-        sa.Column("ai_response_snapshot", postgresql.JSON(astext=True), nullable=True),
+        sa.Column("ai_response_snapshot", postgresql.JSON(), nullable=True),
         sa.Column("confidence_score", sa.Float(), nullable=True),
         sa.Column("is_approved", sa.Boolean(), nullable=True),
         sa.Column(
