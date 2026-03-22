@@ -1,4 +1,5 @@
 """Tests for subscription endpoints."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -26,9 +27,7 @@ async def test_list_plans(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_current_subscription(
-    auth_client: AsyncClient, test_user
-):
+async def test_get_current_subscription(auth_client: AsyncClient, test_user):
     """Test getting current subscription status."""
     response = await auth_client.get("/v1/subscriptions/current")
     assert response.status_code == 200
@@ -40,9 +39,7 @@ async def test_get_current_subscription(
 
 
 @pytest.mark.asyncio
-async def test_create_checkout_success(
-    auth_client: AsyncClient, test_user
-):
+async def test_create_checkout_success(auth_client: AsyncClient, test_user):
     """Test creating a Mercado Pago checkout URL."""
     mock_mp_response = {
         "id": "MP-PREAPPROVAL-123",

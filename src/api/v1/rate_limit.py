@@ -23,5 +23,7 @@ async def get_rate_limit_status(
         "resets_in_seconds": ttl,
         "monthly_usage": current_user.monthly_request_count,
         "monthly_limit": current_user.request_limit,
-        "monthly_remaining": max(0, current_user.request_limit - current_user.monthly_request_count),
+        "monthly_remaining": max(
+            0, current_user.request_limit - current_user.monthly_request_count
+        ),
     }

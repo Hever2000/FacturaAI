@@ -1,4 +1,5 @@
 """Pytest configuration and fixtures for FacturaAI tests."""
+
 from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, patch
 
@@ -36,7 +37,7 @@ async def init_db(test_engine):
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def db_session_factory(test_engine, init_db):
     """Create a session factory for each test function."""
     return async_sessionmaker(
@@ -81,11 +82,27 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     mock_redis.ttl = AsyncMock(return_value=30)
     with (
         patch("src.db.redis.get_redis", return_value=mock_redis),
-        patch("src.api.deps.rate_limiter.is_allowed", new_callable=AsyncMock, return_value=(True, 1, 60)),
-        patch("src.api.deps.rate_limiter.get_current_usage", new_callable=AsyncMock, return_value=(1, 60)),
+        patch(
+            "src.api.deps.rate_limiter.is_allowed",
+            new_callable=AsyncMock,
+            return_value=(True, 1, 60),
+        ),
+        patch(
+            "src.api.deps.rate_limiter.get_current_usage",
+            new_callable=AsyncMock,
+            return_value=(1, 60),
+        ),
         patch("src.api.deps.rate_limiter.get_ttl", new_callable=AsyncMock, return_value=30),
-        patch("src.services.apikey.rate_limiter.is_allowed", new_callable=AsyncMock, return_value=(True, 1, 60)),
-        patch("src.services.apikey.rate_limiter.get_current_usage", new_callable=AsyncMock, return_value=(1, 60)),
+        patch(
+            "src.services.apikey.rate_limiter.is_allowed",
+            new_callable=AsyncMock,
+            return_value=(True, 1, 60),
+        ),
+        patch(
+            "src.services.apikey.rate_limiter.get_current_usage",
+            new_callable=AsyncMock,
+            return_value=(1, 60),
+        ),
         patch("src.services.apikey.rate_limiter.get_ttl", new_callable=AsyncMock, return_value=30),
     ):
 

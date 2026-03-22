@@ -1,4 +1,5 @@
 """Tests for job processing endpoints."""
+
 import io
 from unittest.mock import patch
 
@@ -42,9 +43,7 @@ async def test_process_invoice_success(
         assert data["status"] == "completed"
 
         # Verify job was saved to DB
-        result = await db_session.execute(
-            select(Job).where(Job.user_id == test_user.id)
-        )
+        result = await db_session.execute(select(Job).where(Job.user_id == test_user.id))
         job = result.scalar_one()
         assert job.user_id == test_user.id
         assert job.filename == "invoice.png"
@@ -122,9 +121,7 @@ async def test_list_jobs(auth_client: AsyncClient, test_user, db_session):
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_filter_by_status(
-    auth_client: AsyncClient, test_user, db_session
-):
+async def test_list_jobs_filter_by_status(auth_client: AsyncClient, test_user, db_session):
     """Test filtering jobs by status."""
     job = Job(user_id=test_user.id, status="failed", filename="failed.png")
     db_session.add(job)
@@ -138,9 +135,7 @@ async def test_list_jobs_filter_by_status(
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_pagination(
-    auth_client: AsyncClient, test_user, db_session
-):
+async def test_list_jobs_pagination(auth_client: AsyncClient, test_user, db_session):
     """Test job list pagination."""
     response = await auth_client.get("/v1/jobs?page=1&page_size=2")
     assert response.status_code == 200
@@ -185,9 +180,7 @@ async def test_get_job_not_found(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_other_user_job_fails(
-    auth_client: AsyncClient, client: AsyncClient, db_session
-):
+async def test_get_other_user_job_fails(auth_client: AsyncClient, client: AsyncClient, db_session):
     """Test getting another user's job fails."""
     from src.core.security import get_password_hash
 
@@ -234,9 +227,7 @@ async def test_export_job_json(
 
 
 @pytest.mark.asyncio
-async def test_export_job_txt(
-    auth_client: AsyncClient, test_user, db_session, mock_llm_extraction
-):
+async def test_export_job_txt(auth_client: AsyncClient, test_user, db_session, mock_llm_extraction):
     """Test exporting job as plain text."""
     job = Job(
         user_id=test_user.id,
@@ -257,9 +248,7 @@ async def test_export_job_txt(
 
 
 @pytest.mark.asyncio
-async def test_export_unprocessed_job(
-    auth_client: AsyncClient, test_user, db_session
-):
+async def test_export_unprocessed_job(auth_client: AsyncClient, test_user, db_session):
     """Test exporting an unprocessed job fails."""
     job = Job(user_id=test_user.id, status="processing", filename="pending.png")
     db_session.add(job)

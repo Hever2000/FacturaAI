@@ -106,9 +106,7 @@ class APIKeyService:
     async def list_api_keys(self, user_id: UUID) -> list[APIKey]:
         """List all API keys for a user."""
         result = await self.db.execute(
-            select(APIKey)
-            .where(APIKey.user_id == user_id)
-            .order_by(APIKey.created_at.desc())
+            select(APIKey).where(APIKey.user_id == user_id).order_by(APIKey.created_at.desc())
         )
         return list(result.scalars().all())
 

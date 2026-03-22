@@ -19,7 +19,9 @@ async def list_plans() -> list[SubscriptionPlan]:
     return list(PLANS.values())
 
 
-@router.post("/checkout", response_model=SubscriptionCheckoutResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/checkout", response_model=SubscriptionCheckoutResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_checkout(
     checkout_data: SubscriptionCheckoutRequest,
     request: Request,

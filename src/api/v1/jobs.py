@@ -11,15 +11,9 @@ from sqlalchemy import select
 
 from src.api.deps import CurrentUser, DBSession
 from src.core.config import settings
-from src.core.feedback import (
-    add_correction as add_feedback_correction,
-)
-from src.core.feedback import (
-    export_training_jsonl as do_export,
-)
-from src.core.feedback import (
-    get_feedback_stats as do_stats,
-)
+from src.core.feedback import add_correction as add_feedback_correction
+from src.core.feedback import export_training_jsonl as do_export
+from src.core.feedback import get_feedback_stats as do_stats
 from src.core.ocr import extract_invoice_fields, process_ocr
 from src.models.feedback import Feedback
 from src.models.job import Job
@@ -262,7 +256,9 @@ async def process_invoice(
 
         # Increment user's monthly request count
         auth_service = AuthService(db)
-        has_quota, _, _ = await auth_service.check_usage_and_increment(current_user, reset_if_needed=True)
+        has_quota, _, _ = await auth_service.check_usage_and_increment(
+            current_user, reset_if_needed=True
+        )
 
         logger.info(f"Job {job_id} completed successfully")
 
@@ -345,9 +341,7 @@ async def get_job(
     current_user: CurrentUser,
 ) -> dict:
     """Get job status and results."""
-    result = await db.execute(
-        select(Job).where(Job.id == job_id, Job.user_id == current_user.id)
-    )
+    result = await db.execute(select(Job).where(Job.id == job_id, Job.user_id == current_user.id))
     job = result.scalar_one_or_none()
 
     if not job:
@@ -377,9 +371,7 @@ async def export_job(
     format: str = Query("json", pattern="^(json|txt)$"),
 ) -> Response:  # noqa: B008
     """Export processed invoice data as JSON or plain text."""
-    result = await db.execute(
-        select(Job).where(Job.id == job_id, Job.user_id == current_user.id)
-    )
+    result = await db.execute(select(Job).where(Job.id == job_id, Job.user_id == current_user.id))
     job = result.scalar_one_or_none()
 
     if not job:
@@ -418,9 +410,7 @@ async def get_job_text(
     current_user: CurrentUser,
 ) -> Response:  # noqa: B008
     """Get the processed invoice data as formatted plain text."""
-    result = await db.execute(
-        select(Job).where(Job.id == job_id, Job.user_id == current_user.id)
-    )
+    result = await db.execute(select(Job).where(Job.id == job_id, Job.user_id == current_user.id))
     job = result.scalar_one_or_none()
 
     if not job:
@@ -445,9 +435,7 @@ async def submit_feedback(
     current_user: CurrentUser,
 ) -> dict:
     """Submit a correction for a processed invoice field."""
-    result = await db.execute(
-        select(Job).where(Job.id == job_id, Job.user_id == current_user.id)
-    )
+    result = await db.execute(select(Job).where(Job.id == job_id, Job.user_id == current_user.id))
     job = result.scalar_one_or_none()
 
     if not job:

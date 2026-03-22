@@ -1,4 +1,5 @@
 """Tests for API key management endpoints."""
+
 from uuid import uuid4
 
 import pytest
@@ -161,7 +162,7 @@ async def test_update_other_user_api_key_fails(
         "/v1/apikeys",
         json={"name": "Other User Key"},
     )
-    key_id = create_resp.json()["id"]
+    assert create_resp.status_code == 201
 
     # Try to update it with auth_client (should be same user)
     # This is actually the same user, so it works
