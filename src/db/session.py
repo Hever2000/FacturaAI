@@ -24,6 +24,8 @@ def _normalize_database_url(url: str) -> str:
             "DATABASE_URL is not set. "
             "Set the DATABASE_URL environment variable to connect to PostgreSQL."
         )
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
     if url.startswith("postgresql://"):
         return url.replace("postgresql://", "postgresql+asyncpg://", 1)
     return url
