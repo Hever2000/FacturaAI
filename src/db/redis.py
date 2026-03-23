@@ -6,13 +6,14 @@ redis_client: redis.Redis | None = None
 
 
 async def init_redis() -> redis.Redis:
-    """Initialize Redis connection."""
+    """Initialize Redis connection and verify connectivity with ping."""
     global redis_client
     redis_client = redis.from_url(
         settings.REDIS_URL,
         encoding="utf-8",
         decode_responses=True,
     )
+    await redis_client.ping()
     return redis_client
 
 

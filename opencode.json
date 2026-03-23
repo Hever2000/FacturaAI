@@ -14,14 +14,11 @@
         "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJ1c2VyXzAxS0taUFRXU1hORkVLVjU2TjMwSEJKTUc1Iiwib3JnSWQiOiJvcmdfMDFLS1pQWEQ5UU5ENDRXTTQ3MEFTMTdOR1giLCJpYXQiOjE3NzM4MTE5ODN9.67NFkAZtFH56GtpyvoyUxJ7KB-xtZcfigM6NQkd3qGc"
       }
     },
-    "brightdata": {
-      "type": "local",
+    "mercadopago-mcp-server": {
+      "type": "remote",
       "enabled": true,
-      "command": ["npx", "-y", "@brightdata/mcp"],
-      "environment": {
-        "API_TOKEN": "${BRIGHTDATA_API_KEY}",
-        "PRO_MODE": "true"
-      }
+      "url": "https://mcp.mercadopago.com/mcp",
+      "timeout": 30000
     }
   }
 }

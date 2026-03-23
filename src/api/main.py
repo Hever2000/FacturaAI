@@ -1,4 +1,5 @@
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -22,15 +23,51 @@ logging.basicConfig(
 logger = logging.getLogger("factura_ai")
 
 
+def _redact_url(url: str) -> str:
+    """Redact credentials from a URL for safe logging."""
+    import re
+
+    # Remove user:password@ or user@ patterns
+    redacted = re.sub(r"://[^@]+@", "://***@", url)
+    # If no @ found, still try to remove leading protocol+creds
+    if "@" not in redacted:
+        redacted = re.sub(r"://[^/]+", "://***", url)
+    return redacted
+
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Lifespan events for startup and shutdown."""
-    await init_db()
-    await init_redis()
-    settings.ensure_directories()
-    yield
-    await close_redis()
-    await close_db()
+    logger.info("Starting FacturaAI API...")
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"Database: {_redact_url(settings.DATABASE_URL)}")
+    logger.info(f"Redis: {_redact_url(settings.REDIS_URL)}")
+    try:
+        logger.info("Initializing database connection...")
+        await init_db()
+        logger.info("Database connection established.")
+        logger.info("Initializing Redis connection...")
+        await init_redis()
+        logger.info("Redis connection established.")
+        logger.info("Ensuring storage directories exist...")
+        settings.ensure_directories()
+        logger.info("FacturaAI API started successfully.")
+    except Exception as e:
+        logger.error(f"Startup failed: {e}", exc_info=True)
+        raise
+    try:
+        yield
+    finally:
+        logger.info("Shutting down FacturaAI API...")
+        try:
+            await close_redis()
+        except Exception as e:
+            logger.error(f"Error closing Redis: {e}")
+        try:
+            await close_db()
+        except Exception as e:
+            logger.error(f"Error closing database: {e}")
+        logger.info("FacturaAI API shut down.")
 
 
 app = FastAPI(

@@ -10,8 +10,22 @@ from sqlalchemy.orm import DeclarativeBase
 
 from src.core.config import settings
 
+
+def _normalize_database_url(url: str) -> str:
+    """
+    Normalize database URL for async SQLAlchemy.
+
+    Render provides 'postgresql://...' but asyncpg requires
+    'postgresql+asyncpg://...'. Normalize if the async driver
+    prefix is missing.
+    """
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    _normalize_database_url(settings.DATABASE_URL),
     echo=settings.DEBUG,
     pool_size=settings.DATABASE_POOL_SIZE,
     max_overflow=settings.DATABASE_MAX_OVERFLOW,

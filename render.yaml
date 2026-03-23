@@ -1,0 +1,80 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy: render blueprint render.yaml
+#
+# Required environment variables (set in Render dashboard or .env.render):
+#   - GROQ_API_KEY
+#   - SECRET_KEY
+#   - PADDLE_VL_TOKEN
+#   - REDIS_URL (external Redis, e.g. Upstash, Redis Cloud, or Railway)
+#
+# PostgreSQL is provisioned automatically as a native Render resource below.
+
+services:
+  - type: web
+    name: facturaai-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerTarget: prod
+    region: sao_paulo  # closest to Argentina
+    plan: starter  # $7/mo — upgrade to instance for production
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      # App environment
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+      # Security
+      - key: SECRET_KEY
+        sync: false  # set in dashboard
+
+      # OCR/LLM
+      - key: GROQ_API_KEY
+        sync: false  # set in dashboard
+      - key: PADDLE_VL_API_URL
+        value: https://c6vceb62c4n8zfaf.aistudio-app.com/layout-parsing
+      - key: PADDLE_VL_TOKEN
+        sync: false  # set in dashboard
+
+      # Mercado Pago
+      - key: MERCADO_PAGO_ENABLED
+        value: false
+      - key: MERCADO_PAGO_ACCESS_TOKEN
+        sync: false  # set in dashboard when ready
+      - key: MERCADO_PAGO_WEBHOOK_SECRET
+        sync: false  # set in dashboard when ready
+
+      # Redis (external: Upstash, Redis Cloud, or Railway)
+      - key: REDIS_URL
+        sync: false  # set in dashboard
+
+      # Storage
+      - key: STORAGE_PATH
+        value: /app/storage
+      - key: MAX_FILE_SIZE_MB
+        value: "10"
+
+      # CORS
+      - key: CORS_ORIGINS
+        # Replace with your frontend domain when deployed
+        value: "https://facturaai.com,http://localhost:3000,http://localhost:5173"
+
+      # PostgreSQL — provisioned automatically (see 'postgres' resource below)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: facturaai-db
+          property: connectionString
+
+# Managed PostgreSQL database
+postgres:
+  - name: facturaai-db
+    plan: starter  # $7/mo — free tier available
+    region: sao_paulo
+    databaseName: facturaai
+    ipAllowList: []  # allow all IPs (default)

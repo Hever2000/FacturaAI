@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     libgomp1 \
-    libpq-dev \
-    gcc \
+    libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -61,7 +61,7 @@ CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--re
 # =============================================================================
 FROM python:3.12-slim-bookworm AS prod
 
-# Install only runtime system deps
+# Install ONLY runtime system deps (no gcc, no dev libs)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
@@ -77,17 +77,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
-# Copy source + config (not test files)
+# Set working directory BEFORE copying source files
+WORKDIR /app
+
+# Runtime environment (must be before COPY so it persists)
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Copy source + config (now correctly placed under /app)
 COPY src/ ./src/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
+COPY pyproject.toml ./
 
 # Create storage dir
 RUN mkdir -p /app/storage
 
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
+EXPOSE 8080
 
-EXPOSE 8000
+# Health check for Render
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-# CMD set via docker-compose
+# Startup script: run migrations, then start server
+# Uses $PORT if provided (Render), defaults to 8080 (Docker)
+CMD ["/bin/sh", "-c", "echo 'Running database migrations...' && alembic upgrade head && echo 'Starting API server...' && exec uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

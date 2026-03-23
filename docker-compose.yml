@@ -137,8 +137,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Uses $PORT if provided (Render), defaults to 8000 (matches container port below)
     command: >
-      sh -c "alembic upgrade head && uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4"
+      sh -c "alembic upgrade head && uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 4"
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
