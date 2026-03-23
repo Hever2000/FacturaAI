@@ -5,8 +5,8 @@ import os
 # Set DATABASE_URL BEFORE importing any src modules.
 # This must be set before src.core.config is loaded, since session.py
 # creates the async engine at module import time using settings.DATABASE_URL.
-# Use an in-memory SQLite URL so the module-level engine doesn't try localhost.
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///test.db"
+# Use a SQLite URL so the module-level engine doesn't try localhost.
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only")
