@@ -58,7 +58,7 @@ async def check_webhook_idempotency(event_id: str) -> bool:
     Check if webhook event was already processed.
     Returns True if already processed (skip), False if new (process).
     """
-    if not redis_available:
+    if not redis_service.is_available:
         return False
     
     key = f"mp_webhook:{event_id}"
