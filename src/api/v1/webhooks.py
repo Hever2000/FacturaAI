@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
 from src.db import get_db
-from src.db.redis import get_redis
+from src.db.redis import redis_service, redis_available
 from src.services.subscription import SubscriptionService
 
 logger = logging.getLogger("facturaai")
@@ -59,15 +59,16 @@ async def check_webhook_idempotency(event_id: str) -> bool:
     Check if webhook event was already processed.
     Returns True if already processed (skip), False if new (process).
     """
-    redis_client = await get_redis()
+    if not redis_available:
+        return False
+    
     key = f"mp_webhook:{event_id}"
-    exists = await redis_client.exists(key)
+    exists = await redis_service.exists(key)
     if exists:
         logger.info(f"Webhook event {event_id} already processed, skipping")
         return True
 
-    # Mark as processed for 24 hours
-    await redis_client.setex(key, timedelta(hours=24), "1")
+    await redis_service.setex(key, timedelta(hours=24).total_seconds(), "1")
     return False
 
 

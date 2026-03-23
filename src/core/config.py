@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     DATABASE_MAX_OVERFLOW: int = 10
 
     # Redis
-    REDIS_URL: str = Field(default="redis://localhost:6379/0")
+    REDIS_URL: str = Field(default="")
 
     @model_validator(mode="after")
     def _block_localhost_in_prod(self) -> "Settings":

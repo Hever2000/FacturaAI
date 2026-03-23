@@ -5,12 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
-from src.db.redis import get_redis
-from src.models.apikey import APIKey
+from src.db.redis import redis_service, redis_available
 
 
 class RateLimiter:
-    """Redis-based rate limiter using sliding window."""
+    """Redis-based rate limiter using sliding window. Falls back to allow all if Redis unavailable."""
 
     WINDOW_SECONDS = 60
 
@@ -21,7 +20,6 @@ class RateLimiter:
         Returns:
             Tuple of (is_allowed, current_count, limit)
         """
-        redis_client = await get_redis()
         key = f"rate_limit:{user_id}"
 
         limit = settings.RATE_LIMIT_PER_MINUTE
@@ -30,13 +28,19 @@ class RateLimiter:
         elif tier == "enterprise":
             limit = limit * 10
 
-        current = await redis_client.get(key)
+        if not redis_available:
+            return True, 0, limit
+
+        current = await redis_service.get(key)
         current_count = int(current) if current else 0
 
         if current_count >= limit:
             return False, current_count, limit
 
-        pipe = redis_client.pipeline()
+        pipe = await redis_service.pipeline()
+        if pipe is None:
+            return True, current_count, limit
+        
         pipe.incr(key)
         pipe.expire(key, self.WINDOW_SECONDS)
         await pipe.execute()
@@ -45,16 +49,20 @@ class RateLimiter:
 
     async def get_current_usage(self, user_id: UUID) -> tuple[int, int]:
         """Get current rate limit usage."""
-        redis_client = await get_redis()
+        if not redis_available:
+            return 0, settings.RATE_LIMIT_PER_MINUTE
+        
         key = f"rate_limit:{user_id}"
-        current = await redis_client.get(key)
+        current = await redis_service.get(key)
         return int(current) if current else 0, settings.RATE_LIMIT_PER_MINUTE
 
     async def get_ttl(self, user_id: UUID) -> int:
         """Get seconds until rate limit resets."""
-        redis_client = await get_redis()
+        if not redis_available:
+            return 0
+        
         key = f"rate_limit:{user_id}"
-        ttl = await redis_client.ttl(key)
+        ttl = await redis_service.ttl(key)
         return max(0, ttl)
 
 

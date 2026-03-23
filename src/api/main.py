@@ -15,7 +15,7 @@ from src.api.v1 import (
 )
 from src.core.config import settings
 from src.db import close_db, init_db
-from src.db.redis import close_redis, init_redis
+from src.db.redis import close_redis, init_redis, redis_available
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -47,8 +47,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await init_db()
         logger.info("Database connection established.")
         logger.info("Initializing Redis connection...")
-        await init_redis()
-        logger.info("Redis connection established.")
+        redis_ok = await init_redis()
+        if redis_ok:
+            logger.info("Redis connection established.")
+        else:
+            logger.info("Redis disabled or unavailable. Running in no-cache mode.")
         logger.info("Ensuring storage directories exist...")
         settings.ensure_directories()
         logger.info("FacturaAI API started successfully.")
@@ -107,4 +110,8 @@ app.include_router(webhooks_router, prefix=settings.API_V1_PREFIX)
 @app.get("/health", summary="Health check")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "factura-ai"}
+    return {
+        "status": "healthy",
+        "service": "factura-ai",
+        "redis": "connected" if redis_available else "disconnected"
+    }
