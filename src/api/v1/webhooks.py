@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
 from src.db import get_db
-from src.db.redis import redis_available, redis_service
+from src.db.redis import redis_service
 from src.services.subscription import SubscriptionService
 
 logger = logging.getLogger("facturaai")
