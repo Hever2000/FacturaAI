@@ -91,7 +91,14 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 10
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "https://facturaai.com"]
+    CORS_ORIGINS: list[str] = Field(
+        default=[
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://facturaai.com",
+            "https://factura-ai-obyb4rw05-santiago-coronels-projects.vercel.app",
+        ]
+    )
 
     # Paths
     TEMP_PATH: str = "./temp"
