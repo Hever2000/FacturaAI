@@ -28,7 +28,8 @@ async def lifespan(app: FastAPI):
     try:
         logger.info("Starting FacturaAI API...")
         logger.info(f"Environment: {settings.ENVIRONMENT}")
-        logger.info(f"Database: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
+        db_display = settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else '***'
+        logger.info(f"Database: {db_display}")
         logger.info(f"Redis: {settings.REDIS_URL}")
         logger.info("Initializing database connection...")
         await init_db()
