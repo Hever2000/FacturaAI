@@ -66,7 +66,8 @@ class Settings(BaseSettings):
             localhost_patterns = ("localhost", "127.0.0.1", "0.0.0.0")
             if any(pat in v for pat in localhost_patterns):
                 raise ValueError(
-                    f"Invalid DATABASE_URL in {env}: '{v}' resolves to localhost. "
+                raise ValueError(
+                    f"Invalid DATABASE_URL in {env}: resolves to localhost. "
                     "Render cannot reach localhost. "
                     "Use the connection string from Render's postgres resource."
                 )
