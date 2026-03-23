@@ -30,7 +30,8 @@ async def lifespan(app: FastAPI):
         logger.info(f"Environment: {settings.ENVIRONMENT}")
         db_display = settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else '***'
         logger.info(f"Database: {db_display}")
-        logger.info(f"Redis: {settings.REDIS_URL}")
+        redis_display = settings.REDIS_URL.split('@')[1] if '@' in settings.REDIS_URL else settings.REDIS_URL
+        logger.info(f"Redis: {redis_display}")
         logger.info("Initializing database connection...")
         await init_db()
         logger.info("Database connection established.")
