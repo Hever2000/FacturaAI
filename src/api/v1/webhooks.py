@@ -1,7 +1,6 @@
 import hashlib
 import hmac
 import logging
-from datetime import timedelta
 
 from fastapi import APIRouter, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession

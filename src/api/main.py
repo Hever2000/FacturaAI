@@ -15,7 +15,7 @@ from src.api.v1 import (
 )
 from src.core.config import settings
 from src.db import close_db, init_db
-from src.db.redis import close_redis, init_redis, redis_available, _redact_url
+from src.db.redis import _redact_url, close_redis, init_redis, redis_available
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
