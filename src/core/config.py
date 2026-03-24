@@ -97,6 +97,7 @@ class Settings(BaseSettings):
             "http://localhost:5173",
             "https://facturaai.com",
             "https://factura-ai-obyb4rw05-santiago-coronels-projects.vercel.app",
+            "https://factura-ai-web.vercel.app",
         ]
     )
 
