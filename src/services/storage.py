@@ -22,7 +22,6 @@ Usage:
 import logging
 import os
 import uuid
-from datetime import timedelta
 from enum import Enum
 
 import boto3

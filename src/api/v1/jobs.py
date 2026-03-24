@@ -1,8 +1,7 @@
 import json
 import logging
-import os
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response

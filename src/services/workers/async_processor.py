@@ -25,7 +25,6 @@ from typing import Any
 
 from sqlalchemy import select
 
-from src.core.config import settings
 from src.db.session import async_session_maker
 
 logger = logging.getLogger("facturaai")
@@ -114,8 +113,8 @@ async def process_job_background(
             return {"status": "failed", "error": error_msg}
 
         # Save to temp file for OCR processing
-        import tempfile
         import os
+        import tempfile
 
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             tmp.write(file_content)
