@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, status
 from src.api.deps import CurrentUser, DBSession
 from src.schemas.auth import (
     LoginRequest,
+    LogoutRequest,
     RefreshTokenRequest,
     Token,
     UserCreate,
@@ -84,3 +85,23 @@ async def get_current_user_info(
         monthly_limit=current_user.request_limit,
         requests_remaining=current_user.request_limit - current_user.monthly_request_count,
     )
+
+
+@router.post("/logout")
+async def logout(
+    logout_data: LogoutRequest,
+    db: DBSession,
+) -> dict:
+    """
+    Logout a user by invalidating their refresh token.
+    """
+    auth_service = AuthService(db)
+
+    success = await auth_service.logout(logout_data.refresh_token)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid refresh token",
+        )
+
+    return {"message": "Successfully logged out"}

@@ -14,20 +14,32 @@ class RateLimiter:
 
     WINDOW_SECONDS = 60
 
-    async def is_allowed(self, user_id: UUID, tier: str = "free") -> tuple[bool, int, int]:
+    async def is_allowed(
+        self,
+        user_id: UUID | None = None,
+        tier: str = "free",
+        api_key_id: UUID | None = None,
+    ) -> tuple[bool, int, int]:
         """
         Check if request is allowed under rate limit.
+
+        Args:
+            user_id: User ID for user-based rate limiting
+            tier: Subscription tier for tier-based rate limiting
+            api_key_id: API key ID for per-key rate limiting
 
         Returns:
             Tuple of (is_allowed, current_count, limit)
         """
-        key = f"rate_limit:{user_id}"
-
-        limit = settings.RATE_LIMIT_PER_MINUTE
-        if tier == "pro":
-            limit = limit * 5
-        elif tier == "enterprise":
-            limit = limit * 10
+        if api_key_id:
+            limit = await self._get_api_key_limit(api_key_id)
+            key = f"rate_limit:apikey:{api_key_id}"
+        elif user_id:
+            limit = self._get_tier_limit(tier)
+            key = f"rate_limit:user:{user_id}"
+        else:
+            limit = self._get_tier_limit(tier)
+            key = "rate_limit:global"
 
         if not redis_available:
             return True, 0, limit
@@ -41,19 +53,41 @@ class RateLimiter:
         pipe = await redis_service.pipeline()
         if pipe is None:
             return True, current_count, limit
-        
+
         pipe.incr(key)
         pipe.expire(key, self.WINDOW_SECONDS)
         await pipe.execute()
 
         return True, current_count + 1, limit
 
+    def _get_tier_limit(self, tier: str) -> int:
+        """Get rate limit based on subscription tier."""
+        base_limit = settings.RATE_LIMIT_PER_MINUTE
+        if tier == "pro":
+            return base_limit * 5
+        elif tier == "enterprise":
+            return base_limit * 10
+        return base_limit
+
+    async def _get_api_key_limit(self, api_key_id: UUID) -> int:
+        """Get rate limit from API key settings."""
+        from sqlalchemy import select
+
+        async with settings._db_session() as session:  # type: ignore
+            result = await session.execute(
+                select(APIKey).where(APIKey.id == api_key_id)
+            )
+            api_key = result.scalar_one_or_none()
+            if api_key and api_key.rate_limit_per_minute:
+                return api_key.rate_limit_per_minute
+        return self._get_tier_limit("free")
+
     async def get_current_usage(self, user_id: UUID) -> tuple[int, int]:
         """Get current rate limit usage."""
         if not redis_available:
             return 0, settings.RATE_LIMIT_PER_MINUTE
-        
-        key = f"rate_limit:{user_id}"
+
+        key = f"rate_limit:user:{user_id}"
         current = await redis_service.get(key)
         return int(current) if current else 0, settings.RATE_LIMIT_PER_MINUTE
 
@@ -61,10 +95,43 @@ class RateLimiter:
         """Get seconds until rate limit resets."""
         if not redis_available:
             return 0
-        
-        key = f"rate_limit:{user_id}"
+
+        key = f"rate_limit:user:{user_id}"
         ttl = await redis_service.ttl(key)
         return max(0, ttl)
+
+    async def check_api_key_rate_limit(self, api_key_id: UUID) -> tuple[bool, int, int]:
+        """Check rate limit specifically for an API key."""
+        if not redis_available:
+            return True, 0, 60
+
+        key = f"rate_limit:apikey:{api_key_id}"
+        current = await redis_service.get(key)
+        current_count = int(current) if current else 0
+
+        from sqlalchemy import select
+
+        from src.db.session import AsyncSession
+
+        async with AsyncSession(settings.DATABASE_URL) as session:
+            result = await session.execute(
+                select(APIKey).where(APIKey.id == api_key_id)
+            )
+            api_key = result.scalar_one_or_none()
+            limit = api_key.rate_limit_per_minute if api_key else 60
+
+        if current_count >= limit:
+            return False, current_count, limit
+
+        pipe = await redis_service.pipeline()
+        if pipe is None:
+            return True, current_count, limit
+
+        pipe.incr(key)
+        pipe.expire(key, self.WINDOW_SECONDS)
+        await pipe.execute()
+
+        return True, current_count + 1, limit
 
 
 class APIKeyService:
@@ -79,13 +146,30 @@ class APIKeyService:
         name: str,
         description: str | None = None,
         expires_at: datetime | None = None,
+        scopes: list[str] | None = None,
+        rate_limit_per_minute: int | None = None,
     ) -> tuple[APIKey, str]:
         """
         Create a new API key for a user.
 
+        Args:
+            user_id: User ID
+            name: API key name
+            description: Optional description
+            expires_at: Optional expiration date
+            scopes: List of scopes (permissions)
+            rate_limit_per_minute: Optional rate limit for this key
+
         Returns:
             Tuple of (APIKey model, plain_key)
         """
+        from src.schemas.apikey import validate_scopes
+
+        if scopes is None:
+            scopes = ["jobs:read", "jobs:write"]
+
+        validate_scopes(scopes)
+
         plain_key, key_hash, key_prefix = APIKey.generate_key()
 
         api_key = APIKey(
@@ -95,6 +179,8 @@ class APIKeyService:
             key_prefix=key_prefix,
             description=description,
             expires_at=expires_at,
+            scopes=scopes,
+            rate_limit_per_minute=rate_limit_per_minute or settings.RATE_LIMIT_PER_MINUTE,
         )
         self.db.add(api_key)
         await self.db.flush()
@@ -126,8 +212,12 @@ class APIKeyService:
         description: str | None = None,
         is_active: bool | None = None,
         expires_at: datetime | None = None,
+        scopes: list[str] | None = None,
+        rate_limit_per_minute: int | None = None,
     ) -> APIKey:
         """Update an API key."""
+        from src.schemas.apikey import validate_scopes
+
         if name is not None:
             api_key.name = name
         if description is not None:
@@ -136,6 +226,11 @@ class APIKeyService:
             api_key.is_active = is_active
         if expires_at is not None:
             api_key.expires_at = expires_at
+        if scopes is not None:
+            validate_scopes(scopes)
+            api_key.scopes = scopes
+        if rate_limit_per_minute is not None:
+            api_key.rate_limit_per_minute = rate_limit_per_minute
 
         await self.db.flush()
         await self.db.refresh(api_key)

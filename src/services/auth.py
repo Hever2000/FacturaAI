@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
 from src.core.security import (
+    blacklist_token,
+    check_token_blacklist,
     create_access_token,
     create_refresh_token,
     get_password_hash,
@@ -55,10 +57,15 @@ class AuthService:
             return None
         return user
 
-    async def create_tokens_for_user(self, user: User) -> Token:
-        """Create access and refresh tokens for a user."""
+    async def create_tokens_for_user(
+        self, user: User, token_id: str | None = None
+    ) -> Token:
+        """Create access and refresh tokens for a user with rotation support."""
         access_token = create_access_token(subject=str(user.id))
-        refresh_token = create_refresh_token(subject=str(user.id))
+        refresh_token, token_id = create_refresh_token(
+            subject=str(user.id),
+            token_id=token_id,
+        )
 
         return Token(
             access_token=access_token,
@@ -68,8 +75,28 @@ class AuthService:
         )
 
     async def refresh_tokens(self, refresh_token: str) -> Token | None:
-        """Refresh access token using refresh token."""
-        user_id = verify_refresh_token(refresh_token)
+        """
+        Refresh access token using refresh token with rotation.
+
+        Implements refresh token rotation:
+        1. Validate the refresh token
+        2. Check if it's blacklisted
+        3. Generate new tokens
+        4. Blacklist the old token
+        """
+        payload = verify_refresh_token(refresh_token)
+        if not payload:
+            return None
+
+        token_id = payload.get("tid")
+        if not token_id:
+            return None
+
+        is_blacklisted = await check_token_blacklist(token_id)
+        if is_blacklisted:
+            return None
+
+        user_id = payload.get("sub")
         if not user_id:
             return None
 
@@ -77,7 +104,33 @@ class AuthService:
         if not user or not user.is_active:
             return None
 
-        return await self.create_tokens_for_user(user)
+        new_tokens = await self.create_tokens_for_user(user)
+
+        await blacklist_token(token_id, settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400)
+
+        return new_tokens
+
+    async def logout(self, refresh_token: str) -> bool:
+        """
+        Logout a user by blacklisting their refresh token.
+        """
+        payload = verify_refresh_token(refresh_token)
+        if not payload:
+            return False
+
+        token_id = payload.get("tid")
+        if not token_id:
+            return False
+
+        exp = payload.get("exp")
+        if exp:
+            exp_datetime = datetime.fromtimestamp(exp, UTC)
+            ttl = int((exp_datetime - datetime.now(UTC)).total_seconds())
+            if ttl > 0:
+                await blacklist_token(token_id, ttl)
+                return True
+
+        return False
 
     async def check_usage_and_increment(
         self, user: User, reset_if_needed: bool = True

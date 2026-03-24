@@ -14,7 +14,6 @@ from src.core.config import settings
 from src.core.feedback import add_correction as add_feedback_correction
 from src.core.feedback import export_training_jsonl as do_export
 from src.core.feedback import get_feedback_stats as do_stats
-from src.core.ocr import extract_invoice_fields, process_ocr
 from src.models.feedback import Feedback
 from src.models.job import Job
 
@@ -165,17 +164,14 @@ async def process_invoice(
     - Requires authentication
     - Subject to rate limiting and monthly quota
     - Returns job_id for status checking
+    - Processing happens asynchronously in background
     """
     from src.api.deps import check_monthly_quota, check_rate_limit
-    from src.services.auth import AuthService
 
-    # Check rate limit (per-minute)
     await check_rate_limit(current_user)
 
-    # Check monthly quota
     await check_monthly_quota(current_user)
 
-    # Validate file type
     allowed_types = {"image/png", "image/jpeg", "image/jpg", "application/pdf"}
     if file.content_type not in allowed_types:
         raise HTTPException(
@@ -183,7 +179,6 @@ async def process_invoice(
             detail=f"Unsupported file type: {file.content_type}. Allowed: PNG, JPG, PDF",
         )
 
-    # Check file size
     content = await file.read()
     size_mb = len(content) / (1024 * 1024)
     if size_mb > settings.MAX_FILE_SIZE_MB:
@@ -192,7 +187,6 @@ async def process_invoice(
             detail=f"File too large: {size_mb:.1f}MB. Max: {settings.MAX_FILE_SIZE_MB}MB",
         )
 
-    # Save file to storage
     suffix = os.path.splitext(file.filename or ".png")[1] or ".png"
     filename = f"{uuid4()}{suffix}"
     file_path = os.path.join(settings.STORAGE_PATH, filename)
@@ -200,86 +194,46 @@ async def process_invoice(
     with open(file_path, "wb") as f:
         f.write(content)
 
-    # Create job record
     job = Job(
         user_id=current_user.id,
-        status="processing",
+        status="pending",
         filename=file.filename,
         file_path=file_path,
         file_size=len(content),
         content_type=file.content_type,
     )
     db.add(job)
-    await db.flush()
+    await db.commit()
     await db.refresh(job)
 
     job_id = str(job.id)
 
     try:
-        # OCR step
-        logger.info(f"Job {job_id}: Starting OCR")
-        ocr_result = process_ocr(file_path)
+        from src.core.celery_app import celery_app
 
-        if "error" in ocr_result or ocr_result.get("status") == "OCR_FAILED":
-            error_msg = ocr_result.get("error", "Unknown OCR error")
-            logger.error(f"Job {job_id} OCR failed: {error_msg}")
-            job.status = "failed"
-            job.error_message = error_msg
-            await db.flush()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"OCR processing failed: {error_msg}",
-            )
-
-        job.ocr_engine = ocr_result.get("ocr_engine", "unknown")
-        job.raw_text = json.dumps(ocr_result.get("raw_text", []))
-        await db.flush()
-
-        # LLM extraction step
-        logger.info(f"Job {job_id}: Starting LLM extraction")
-        extracted_data = extract_invoice_fields(ocr_result["full_text"])
-
-        if "error" in extracted_data:
-            error_msg = extracted_data.get("error", "Unknown LLM error")
-            logger.error(f"Job {job_id} LLM failed: {error_msg}")
-            job.status = "failed"
-            job.error_message = error_msg
-            await db.flush()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"LLM extraction failed: {error_msg}",
-            )
-
-        job.extracted_data = extracted_data
-        job.status = "completed"
-        await db.flush()
-
-        # Increment user's monthly request count
-        auth_service = AuthService(db)
-        has_quota, _, _ = await auth_service.check_usage_and_increment(
-            current_user, reset_if_needed=True
+        task = celery_app.send_task(
+            "src.services.workers.tasks.process_job_task",
+            args=[job_id, str(current_user.id), file_path],
+            kwargs={},
         )
 
-        logger.info(f"Job {job_id} completed successfully")
+        job.celery_task_id = task.id
+        job.status = "processing"
+        await db.commit()
 
-    except HTTPException:
-        raise
+        logger.info(f"Job {job_id} queued to Celery with task_id: {task.id}")
+
     except Exception as e:
-        logger.error(f"Job {job_id} failed: {str(e)}")
+        logger.error(f"Failed to queue job {job_id}: {str(e)}")
         job.status = "failed"
-        job.error_message = str(e)
-        job.retry_count = job.retry_count + 1
-        await db.flush()
+        job.error_message = f"Failed to queue job: {str(e)}"
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Processing failed: {str(e)}",
+            detail=f"Failed to queue job: {str(e)}",
         )
-    finally:
-        # Remove temp file from storage (already saved in job)
-        if os.path.exists(file_path):
-            pass  # Keep file for reference
 
-    return {"job_id": job_id, "status": job.status}
+    return {"job_id": job_id, "status": "pending", "message": "Job queued for processing"}
 
 
 @router.get("", response_model=JobListResponse)
@@ -358,9 +312,65 @@ async def get_job(
         "extraction_confidence": job.extraction_confidence,
         "error_message": job.error_message,
         "retry_count": job.retry_count,
+        "celery_task_id": job.celery_task_id,
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "updated_at": job.updated_at.isoformat() if job.updated_at else None,
     }
+
+
+@router.post("/{job_id}/retry")
+async def retry_job(
+    job_id: UUID,
+    db: DBSession,
+    current_user: CurrentUser,
+) -> dict:
+    """Retry a failed job."""
+    from src.core.celery_app import celery_app
+
+    result = await db.execute(select(Job).where(Job.id == job_id, Job.user_id == current_user.id))
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status not in ("failed",):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot retry job with status: {job.status}",
+        )
+
+    if job.retry_count >= 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Maximum retry attempts (3) exceeded",
+        )
+
+    job.status = "pending"
+    job.error_message = None
+    await db.commit()
+
+    try:
+        task = celery_app.send_task(
+            "src.services.workers.tasks.process_job_task",
+            args=[str(job_id), str(current_user.id), job.file_path],
+            kwargs={},
+        )
+
+        job.celery_task_id = task.id
+        job.status = "processing"
+        job.retry_count += 1
+        await db.commit()
+
+        logger.info(f"Job {job_id} retry queued with task_id: {task.id}")
+
+    except Exception as e:
+        logger.error(f"Failed to queue retry for job {job_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to queue retry: {str(e)}",
+        )
+
+    return {"job_id": str(job_id), "status": "processing", "retry_count": job.retry_count}
 
 
 @router.get("/{job_id}/export")

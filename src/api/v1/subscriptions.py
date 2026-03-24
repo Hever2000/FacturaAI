@@ -20,19 +20,21 @@ async def list_plans() -> list[SubscriptionPlan]:
 
 
 @router.post(
-    "/checkout", response_model=SubscriptionCheckoutResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=SubscriptionCheckoutResponse, status_code=status.HTTP_201_CREATED
 )
-async def create_checkout(
-    checkout_data: SubscriptionCheckoutRequest,
+async def create_subscription(
+    subscription_request: SubscriptionCheckoutRequest,
     request: Request,
     db: DBSession,
     current_user: CurrentUser,
 ) -> SubscriptionCheckoutResponse:
     """
-    Create a Mercado Pago checkout for a subscription tier.
+    Create a new subscription.
+
+    Creates a Mercado Pago checkout for a subscription tier.
     Returns the MP checkout URL (init_point) to redirect the user.
     """
-    tier = checkout_data.tier
+    tier = subscription_request.tier
 
     if tier not in PLANS:
         raise HTTPException(
@@ -63,7 +65,7 @@ async def create_checkout(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to create checkout: {str(e)}",
+            detail=f"Failed to create subscription: {str(e)}",
         )
 
 
@@ -77,7 +79,9 @@ async def get_current_subscription(
     return await service.get_current_subscription(current_user)
 
 
-@router.post("/cancel", response_model=MessageResponse)
+@router.delete(
+    "", response_model=MessageResponse, status_code=status.HTTP_200_OK
+)
 async def cancel_subscription(
     db: DBSession,
     current_user: CurrentUser,
@@ -105,7 +109,7 @@ async def cancel_subscription(
         )
 
 
-@router.post("/pause", response_model=MessageResponse)
+@router.patch("/pause", response_model=MessageResponse)
 async def pause_subscription(
     db: DBSession,
     current_user: CurrentUser,
@@ -139,7 +143,7 @@ async def pause_subscription(
         )
 
 
-@router.post("/resume", response_model=MessageResponse)
+@router.patch("/resume", response_model=MessageResponse)
 async def resume_subscription(
     db: DBSession,
     current_user: CurrentUser,

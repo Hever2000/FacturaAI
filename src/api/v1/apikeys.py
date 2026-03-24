@@ -28,12 +28,14 @@ async def create_api_key(
         name=api_key_data.name,
         description=api_key_data.description,
         expires_at=api_key_data.expires_at,
+        scopes=api_key_data.scopes,
     )
     return APIKeyWithSecret(
         id=api_key.id,
         name=api_key.name,
         key=plain_key,
         key_prefix=api_key.key_prefix,
+        scopes=api_key.scopes,
         created_at=api_key.created_at,
         expires_at=api_key.expires_at,
     )
@@ -77,7 +79,7 @@ async def update_api_key(
     db: DBSession,
     current_user: CurrentUser,
 ) -> APIKeyResponse:
-    """Update an API key (name, description, active status, expiry)."""
+    """Update an API key (name, description, scopes, rate limit, active status, expiry)."""
     service = APIKeyService(db)
     api_key = await service.get_api_key_by_id(api_key_id, current_user.id)
     if not api_key:
@@ -91,6 +93,8 @@ async def update_api_key(
         description=update_data.description,
         is_active=update_data.is_active,
         expires_at=update_data.expires_at,
+        scopes=update_data.scopes,
+        rate_limit_per_minute=update_data.rate_limit_per_minute,
     )
     return APIKeyResponse.model_validate(updated)
 
@@ -115,6 +119,7 @@ async def rotate_api_key(
         name=api_key.name,
         key=new_key,
         key_prefix=api_key.key_prefix,
+        scopes=api_key.scopes,
         created_at=api_key.created_at,
         expires_at=api_key.expires_at,
     )

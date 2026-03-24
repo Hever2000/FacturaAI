@@ -2,7 +2,7 @@ import secrets
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -27,6 +27,10 @@ class APIKey(BaseModel):
 
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    scopes: Mapped[list[str]] = mapped_column(
+        JSON, default=["jobs:read", "jobs:write"], nullable=False
+    )
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -34,8 +38,18 @@ class APIKey(BaseModel):
 
     request_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    rate_limit_per_minute: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
+
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="api_keys")
+
+    def has_scope(self, scope: str) -> bool:
+        """Check if API key has the given scope."""
+        return scope in self.scopes
+
+    def has_any_scope(self, scopes: list[str]) -> bool:
+        """Check if API key has any of the given scopes."""
+        return any(scope in self.scopes for scope in scopes)
 
     def __repr__(self) -> str:
         return f"<APIKey {self.name} ({self.key_prefix}...)>"

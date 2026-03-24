@@ -15,7 +15,10 @@ class APIKeyBase(BaseModel):
 class APIKeyCreate(APIKeyBase):
     """API key creation schema."""
 
-    pass
+    scopes: list[str] | None = Field(
+        default=["jobs:read", "jobs:write"],
+        description="Permissions for the API key (jobs:read, jobs:write)",
+    )
 
 
 class APIKeyResponse(BaseModel):
@@ -27,12 +30,14 @@ class APIKeyResponse(BaseModel):
     name: str
     key_prefix: str
     description: str | None
+    scopes: list[str]
     is_active: bool
     is_expired: bool
     is_valid: bool
     last_used_at: datetime | None
     expires_at: datetime | None
     request_count: int
+    rate_limit_per_minute: int
     created_at: datetime
 
 
@@ -43,6 +48,7 @@ class APIKeyWithSecret(BaseModel):
     name: str
     key: str
     key_prefix: str
+    scopes: list[str]
     created_at: datetime
     expires_at: datetime | None
     message: str = (
@@ -56,8 +62,18 @@ class APIKeyUpdate(BaseModel):
 
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
+    scopes: list[str] | None = Field(
+        None,
+        description="Permissions for the API key (jobs:read, jobs:write)",
+    )
     is_active: bool | None = None
     expires_at: datetime | None = None
+    rate_limit_per_minute: int | None = Field(
+        None,
+        ge=1,
+        le=1000,
+        description="Rate limit per minute for this API key",
+    )
 
 
 class APIKeyListResponse(BaseModel):
@@ -65,3 +81,14 @@ class APIKeyListResponse(BaseModel):
 
     api_keys: list[APIKeyResponse]
     total: int
+
+
+VALID_SCOPES = ["jobs:read", "jobs:write"]
+
+
+def validate_scopes(scopes: list[str]) -> list[str]:
+    """Validate that all provided scopes are valid."""
+    invalid = [s for s in scopes if s not in VALID_SCOPES]
+    if invalid:
+        raise ValueError(f"Invalid scopes: {invalid}. Valid scopes: {VALID_SCOPES}")
+    return scopes

@@ -9,7 +9,7 @@ celery_app = Celery(
     broker=REDIS_URL,
     backend=REDIS_URL,
     include=[
-        "services.ocr_worker.tasks",
+        "src.services.workers.tasks",
     ],
 )
 
@@ -21,4 +21,11 @@ celery_app.conf.update(
     enable_utc=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    task_routes={
+        "src.services.workers.tasks.process_job_task": {"queue": "ocr_jobs"},
+        "src.services.workers.tasks.retry_job_task": {"queue": "ocr_jobs"},
+    },
+    task_default_queue="ocr_jobs",
+    task_default_exchange="ocr_jobs",
+    task_default_routing_key="ocr_jobs",
 )
