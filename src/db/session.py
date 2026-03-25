@@ -38,6 +38,8 @@ engine = create_async_engine(
     max_overflow=settings.DATABASE_MAX_OVERFLOW,
     pool_pre_ping=True,
     pool_recycle=3600,
+    # Required for Supabase connection pooler (PgBouncer)
+    connect_args={"statement_cache_size": 0},
 )
 
 async_session_factory = async_sessionmaker(

@@ -5,7 +5,6 @@ pydantic
 pydantic-settings
 groq
 python-dotenv
-psycopg2-binary
 requests>=2.31.0
 tenacity>=8.2.0
 
